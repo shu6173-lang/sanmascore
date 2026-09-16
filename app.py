@@ -158,91 +158,69 @@ with tab1:
 
     game_idx = len(current_history)
     
-    # セッションステートの初期化 (前回の変更を追跡するため last キーも持たせる)
+    # セッションステートの初期化
     for p_num in [1, 2, 3]:
-        p_key = f"p{p_num}_p_{date_str}_{game_idx}"
-        c_key = f"p{p_num}_c_{date_str}_{game_idx}"
-        if p_key not in st.session_state:
-            st.session_state[p_key] = 0.0
-            st.session_state[f"{p_key}_last"] = 0.0
-        if c_key not in st.session_state:
-            st.session_state[c_key] = 0
-            st.session_state[f"{c_key}_last"] = 0
+        if f"p{p_num}_p_{date_str}_{game_idx}" not in st.session_state:
+            st.session_state[f"p{p_num}_p_{date_str}_{game_idx}"] = 0.0
+        if f"p{p_num}_c_{date_str}_{game_idx}" not in st.session_state:
+            st.session_state[f"p{p_num}_c_{date_str}_{game_idx}"] = 0
 
-    # どの入力欄が直近で変更されたかを検知して、残りのプレイヤーを自動調整するコールバック
-    def make_callback(changed_p_num, is_chip):
-        def callback():
-            p_key_target = f"p{changed_p_num}_c_{date_str}_{game_idx}" if is_chip else f"p{changed_p_num}_p_{date_str}_{game_idx}"
-            last_key = f"{p_key_target}_last"
-            
-            current_val = st.session_state[p_key_target]
-            last_val = st.session_state[last_key]
-            diff = current_val - last_val
-            
-            if diff != 0:
-                other_p_nums = [p for p in [1, 2, 3] if p != changed_p_num]
-                # もう一方のプレイヤーに差分を均等、あるいは2番目のプレイヤーに押し付ける
-                # ここでは「2番目のプレイヤー(other_p_nums[0])」に逆向きの差分をすべて背負わせることで、合計0を美しく保つ
-                other_key = f"p{other_p_nums[0]}_c_{date_str}_{game_idx}" if is_chip else f"p{other_p_nums[0]}_p_{date_str}_{game_idx}"
-                
-                st.session_state[other_key] -= diff
-                st.session_state[f"{other_key}_last"] = st.session_state[other_key]
-                
-            st.session_state[last_key] = current_val
-        return callback
+    # 1人目・2人目を入力したら、3人目が自動で残り（マイナスの合計）を背負う計算ロジック
+    p1_p = st.session_state[f"p1_p_{date_str}_{game_idx}"]
+    p1_c = st.session_state[f"p1_c_{date_str}_{game_idx}"]
+    p2_p = st.session_state[f"p2_p_{date_str}_{game_idx}"]
+    p2_c = st.session_state[f"p2_c_{date_str}_{game_idx}"]
 
-    # 入力フォームの描画（on_changeでリアルタイムにバランス調整）
+    # 3人目の値を自動計算してセッションに反映
+    calc_p3_p = -(p1_p + p2_p)
+    calc_p3_c = -(p1_c + p2_c)
+    
+    st.session_state[f"p3_p_{date_str}_{game_idx}"] = calc_p3_p
+    st.session_state[f"p3_c_{date_str}_{game_idx}"] = calc_p3_c
+
+    # 入力フォームの描画
     col1, col2, col3 = st.columns([2, 2, 2])
 
     with col1:
         st.markdown(f"**{p1_name}**")
-        p1_pt = st.number_input("ゲームPt", step=1.0, key=f"p1_p_{date_str}_{game_idx}", on_change=make_callback(1, False))
-        p1_chip = st.number_input("チップ枚数", step=1, key=f"p1_c_{date_str}_{game_idx}", on_change=make_callback(1, True))
+        st.number_input("ゲームPt", step=1.0, key=f"p1_p_{date_str}_{game_idx}")
+        st.number_input("チップ枚数", step=1, key=f"p1_c_{date_str}_{game_idx}")
 
     with col2:
         st.markdown(f"**{p2_name}**")
-        p2_pt = st.number_input("ゲームPt", step=1.0, key=f"p2_p_{date_str}_{game_idx}", on_change=make_callback(2, False))
-        p2_chip = st.number_input("チップ枚数", step=1, key=f"p2_c_{date_str}_{game_idx}", on_change=make_callback(2, True))
+        st.number_input("ゲームPt", step=1.0, key=f"p2_p_{date_str}_{game_idx}")
+        st.number_input("チップ枚数", step=1, key=f"p2_c_{date_str}_{game_idx}")
 
     with col3:
-        st.markdown(f"**{p3_name}**")
-        p3_pt = st.number_input("ゲームPt", step=1.0, key=f"p3_p_{date_str}_{game_idx}", on_change=make_callback(3, False))
-        p3_chip = st.number_input("チップ枚数", step=1, key=f"p3_c_{date_str}_{game_idx}", on_change=make_callback(3, True))
+        st.markdown(f"**{p3_name} (自動計算)**")
+        # 3人目は自動計算結果を表示（disabledで固定）
+        p3_pt = st.number_input("ゲームPt", value=calc_p3_p, disabled=True, key=f"p3_p_display_{date_str}_{game_idx}")
+        p3_chip = st.number_input("チップ枚数", value=calc_p3_c, disabled=True, key=f"p3_c_display_{date_str}_{game_idx}")
 
-    # 現在の合計値チェック表示（確認用）
-    total_pt_check = p1_pt + p2_pt + p3_pt
-    total_chip_check = p1_chip + p2_chip + p3_chip
-    
-    if total_pt_check != 0 or total_chip_check != 0:
-        st.warning(f"⚠️ 合計が 0 になっていません (ゲームPt合計: {total_pt_check:+.1f} / チップ合計: {total_chip_check:+d}枚)")
-    else:
-        st.success("✨ バランスOK（ゲームPt・チップの合計が正常に0になっています）", icon="✅")
+    st.success("✨ 1・2人目の数値を入力すると、3人目の数値が自動でバランス（合計0）するように計算されます。", icon="ℹ️")
 
     # 結果の追加ボタン
     if st.button("➕ この半荘の結果を記録する", type="primary", use_container_width=True):
-        if total_pt_check != 0 or total_chip_check != 0:
-            st.error("エラー：ゲームPtとチップの合計がそれぞれ0になるように調整してください。")
-        else:
-            record = {
-                "日付": date_str,
-                "半荘": f"第{game_idx + 1}半荘",
-                "p1_name": p1_name,
-                "p2_name": p2_name,
-                "p3_name": p3_name,
-                "p1_pt": p1_pt,
-                "p2_pt": p2_pt,
-                "p3_pt": p3_pt,
-                "p1_chip": p1_chip,
-                "p2_chip": p2_chip,
-                "p3_chip": p3_chip,
-            }
-            current_history.append(record)
-            
-            append_data_to_sheet(record)
-            st.cache_data.clear()
-            
-            st.success(f"{date_str} の第 {len(current_history)} 半荘の結果を記録しました！（スプレッドシートに保存完了）")
-            st.rerun()
+        record = {
+            "日付": date_str,
+            "半荘": f"第{game_idx + 1}半荘",
+            "p1_name": p1_name,
+            "p2_name": p2_name,
+            "p3_name": p3_name,
+            "p1_pt": p1_p,
+            "p2_pt": p2_p,
+            "p3_pt": calc_p3_p,
+            "p1_chip": p1_c,
+            "p2_chip": p2_c,
+            "p3_chip": calc_p3_c,
+        }
+        current_history.append(record)
+        
+        append_data_to_sheet(record)
+        st.cache_data.clear()
+        
+        st.success(f"{date_str} の第 {len(current_history)} 半荘の結果を記録しました！（スプレッドシートに保存完了）")
+        st.rerun()
 
     # 選択した日付の成績表示
     if current_history:
