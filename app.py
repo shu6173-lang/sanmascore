@@ -6,6 +6,45 @@ import gspread
 
 st.set_page_config(page_title="三麻スコア計算", page_icon="🀄", layout="wide")
 
+# --- 0. パスワード認証機能 ---
+def check_password():
+    """パスワードが合っているかチェックする関数"""
+    def password_entered():
+        if st.session_state["password"] == st.secrets["app_password"]:
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]  # パスワードをセッションから削除
+        else:
+            st.session_state["password_correct"] = False
+
+    if "password_correct" not in st.session_state:
+        # 初回アクセス時（パスワード入力画面を表示）
+        st.subheader("🔒 このアプリはパスワードが必要です")
+        st.text_input(
+            "パスワードを入力してください", type="password", on_change=password_entered, key="password"
+        )
+        if "password_correct" in st.session_state and not st.session_state["password_correct"]:
+            st.error("😕 パスワードが間違っています")
+        return False
+    elif not st.session_state["password_correct"]:
+        # パスワード間違い時
+        st.subheader("🔒 このアプリはパスワードが必要です")
+        st.text_input(
+            "パスワードを入力してください", type="password", on_change=password_entered, key="password"
+        )
+        st.error("😕 パスワードが間違っています")
+        return False
+    else:
+        # 認証成功
+        return True
+
+# パスワード認証をクリアするまでここで処理をストップ
+if not check_password():
+    st.stop()
+
+# ==========================================
+# ここから下は認証成功後のメインアプリ
+# ==========================================
+
 st.title("🀄 三麻専用 スコア・チップ計算")
 
 # --- 1. Googleスプレッドシート接続用関数 ---
@@ -43,8 +82,6 @@ def load_data_from_sheet():
         for row in rows:
             if not row or not row[0]:
                 continue
-            # カラム構成に合わせて安全に辞書へ復元
-            # ["日付", "半荘", "p1_name", "p1_pt", "p1_chip", "p2_name", "p2_pt", "p2_chip", "p3_name", "p3_pt", "p3_chip"]
             date_str = row[0]
             record = {
                 "日付": date_str,
@@ -416,4 +453,4 @@ with tab3:
             use_container_width=True,
         )
     else:
-        st.info("💡 保存されているデータはありません。")
+        st.info("📦 保存されているデータはありません。")
