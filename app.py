@@ -88,7 +88,6 @@ if st.button(
         f"{p1_name}": p1_pt,
         f"{p2_name}": p2_pt,
         f"{p3_name}": p3_pt,
-        # 内部計算用にチップ情報も保持
         "_p1_chip": p1_chip,
         "_p2_chip": p2_chip,
         "_p3_chip": p3_chip,
@@ -104,37 +103,49 @@ if st.session_state.history:
     st.markdown("---")
     st.subheader("📊 総合計スコア")
 
-    # トータル計算（ゲームPt + チップ枚数 × レート）
-    p1_sum = sum(
-        r[p1_name] + (r["_p1_chip"] * chip_rate)
-        for r in st.session_state.history
-    )
-    p2_sum = sum(
-        r[p2_name] + (r["_p2_chip"] * chip_rate)
-        for r in st.session_state.history
-    )
-    p3_sum = sum(
-        r[p3_name] + (r["_p3_chip"] * chip_rate)
-        for r in st.session_state.history
-    )
-
-    totals = [
-        {"name": p1_name, "total": p1_sum},
-        {"name": p2_name, "total": p2_sum},
-        {"name": p3_name, "total": p3_sum},
+    # 集計処理
+    players_data = [
+        {
+            "name": p1_name,
+            "game_pt": sum(r[p1_name] for r in st.session_state.history),
+            "chip_count": sum(r["_p1_chip"] for r in st.session_state.history),
+        },
+        {
+            "name": p2_name,
+            "game_pt": sum(r[p2_name] for r in st.session_state.history),
+            "chip_count": sum(r["_p2_chip"] for r in st.session_state.history),
+        },
+        {
+            "name": p3_name,
+            "game_pt": sum(r[p3_name] for r in st.session_state.history),
+            "chip_count": sum(r["_p3_chip"] for r in st.session_state.history),
+        },
     ]
-    totals.sort(key=lambda x: x["total"], reverse=True)
 
-    t_col1, t_col2, t_col3 = st.columns(3)
-    cols = [t_col1, t_col2, t_col3]
-    for idx, t in enumerate(totals):
+    for p in players_data:
+        p["chip_pt"] = p["chip_count"] * chip_rate
+        p["total_pt"] = p["game_pt"] + p["chip_pt"]
+
+    # 総合計順に並び替え
+    players_data.sort(key=lambda x: x["total_pt"], reverse=True)
+
+    # カード形式でプレイヤーごとに分かりやすく表示
+    cols = st.columns(3)
+    for idx, p in enumerate(players_data):
         with cols[idx]:
-            st.metric(label=f"{idx+1}位 : {t['name']}", value=f"{t['total']:+.1f} pt")
+            st.metric(
+                label=f"🏆 {idx+1}位 : {p['name']}",
+                value=f"{p['total_pt']:+.1f} pt",
+                delta=f"総合計",
+            )
+            st.caption(
+                f"🎮 **ゲームPt:** {p['game_pt']:+.1f} pt\n\n"
+                f"🪙 **チップPt:** {p['chip_pt']:+.1f} pt ({p['chip_count']}枚)"
+            )
 
-    # 履歴テーブル（内部データ以外を表示）
+    # 履歴テーブル（ゲームPtのみ表示）
     st.subheader("📜 対局履歴")
     df = pd.DataFrame(st.session_state.history)
-    # 表示用から内部用カラムを除外
     display_df = df[["半荘", p1_name, p2_name, p3_name]]
     st.dataframe(display_df, use_container_width=True)
 
