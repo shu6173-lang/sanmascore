@@ -66,37 +66,25 @@ with st.sidebar.form("score_form"):
     match_date = st.date_input("対局日")
     match_count = st.text_input("半荘（例: 1回戦）", "1回戦")
     
-    # 3人分のプレイヤー名とスコア・チップの入力（初期値を35000点に変更）
+    # 3人分のプレイヤー名とpt・チップの入力（直接ptを入力）
     st.subheader("プレイヤー1")
     p1_name = st.text_input("名前 (1)", "プレイヤーA")
-    p1_score = st.number_input("持ち点 (1)", value=35000, step=1000)
+    p1_pt = st.number_input("ポイント (1) [例: +15, -10]", value=0.0, step=1.0, format="%.1f")
     p1_chip = st.number_input("チップ数 (1)", value=0, step=1)
 
     st.subheader("プレイヤー2")
     p2_name = st.text_input("名前 (2)", "プレイヤーB")
-    p2_score = st.number_input("持ち点 (2)", value=35000, step=1000)
+    p2_pt = st.number_input("ポイント (2) [例: +5, -5]", value=0.0, step=1.0, format="%.1f")
     p2_chip = st.number_input("チップ数 (2)", value=0, step=1)
 
     st.subheader("プレイヤー3")
     p3_name = st.text_input("名前 (3)", "プレイヤーC")
-    p3_score = st.number_input("持ち点 (3)", value=35000, step=1000)
+    p3_pt = st.number_input("ポイント (3) [例: -20, +10]", value=0.0, step=1.0, format="%.1f")
     p3_chip = st.number_input("チップ数 (3)", value=0, step=1)
-
-    # 設定（レートやウマなど）
-    st.subheader("⚙️ ルール設定")
-    return_score = st.number_input("返し点（基準点）", value=40000, step=1000)
-    uma_1 = st.number_input("ウマ 1位", value=20, step=5)
-    uma_2 = st.number_input("ウマ 2位", value=0, step=5)
-    uma_3 = st.number_input("ウマ 3位", value=-20, step=5)
 
     submitted = st.form_submit_button("計算して記録する")
 
 if submitted:
-    # スコアの計算（(持ち点 - 返し点) / 1000 + ウマ）
-    p1_pt = ((p1_score - return_score) / 1000) + uma_1
-    p2_pt = ((p2_score - return_score) / 1000) + uma_2
-    p3_pt = ((p3_score - return_score) / 1000) + uma_3
-
     # 1行分のデータを作成
     new_row = pd.DataFrame([{
         "日付": str(match_date),
@@ -127,4 +115,3 @@ if not df.empty:
         st.rerun()
 else:
     st.info("まだ対局データがありません。サイドバーからデータを入力してください！")
-これで全員35000点スタートになります！
