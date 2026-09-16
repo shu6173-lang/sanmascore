@@ -83,22 +83,14 @@ if total_chips != 0:
 if st.button(
     "➕ この半荘の結果を記録する", type="primary", use_container_width=True
 ):
-    # 各人の計算
-    p1_tot = p1_pt + (p1_chip * chip_rate)
-    p2_tot = p2_pt + (p2_chip * chip_rate)
-    p3_tot = p3_pt + (p3_chip * chip_rate)
-
     record = {
         "半荘": f"第{len(st.session_state.history) + 1}半荘",
         f"{p1_name}_ゲームPt": p1_pt,
         f"{p1_name}_チップ": p1_chip,
-        f"{p1_name}_合計Pt": p1_tot,
         f"{p2_name}_ゲームPt": p2_pt,
         f"{p2_name}_チップ": p2_chip,
-        f"{p2_name}_合計Pt": p2_tot,
         f"{p3_name}_ゲームPt": p3_pt,
         f"{p3_name}_チップ": p3_chip,
-        f"{p3_name}_合計Pt": p3_tot,
     }
     st.session_state.history.append(record)
     st.success(
@@ -111,10 +103,19 @@ if st.session_state.history:
     st.markdown("---")
     st.subheader("📊 総合計スコア")
 
-    # トータル計算
-    p1_sum = sum(r[f"{p1_name}_合計Pt"] for r in st.session_state.history)
-    p2_sum = sum(r[f"{p2_name}_合計Pt"] for r in st.session_state.history)
-    p3_sum = sum(r[f"{p3_name}_合計Pt"] for r in st.session_state.history)
+    # トータル計算（ゲームPt + チップ枚数 × レート）
+    p1_sum = sum(
+        r[f"{p1_name}_ゲームPt"] + (r[f"{p1_name}_チップ"] * chip_rate)
+        for r in st.session_state.history
+    )
+    p2_sum = sum(
+        r[f"{p2_name}_ゲームPt"] + (r[f"{p2_name}_チップ"] * chip_rate)
+        for r in st.session_state.history
+    )
+    p3_sum = sum(
+        r[f"{p3_name}_ゲームPt"] + (r[f"{p3_name}_チップ"] * chip_rate)
+        for r in st.session_state.history
+    )
 
     totals = [
         {"name": p1_name, "total": p1_sum},
@@ -129,7 +130,7 @@ if st.session_state.history:
         with cols[idx]:
             st.metric(label=f"{idx+1}位 : {t['name']}", value=f"{t['total']:+.1f} pt")
 
-    # 履歴テーブル
+    # 履歴テーブル（合計Ptを省いたスッキリ表示）
     st.subheader("📜 対局履歴")
     df = pd.DataFrame(st.session_state.history)
     st.dataframe(df, use_container_width=True)
