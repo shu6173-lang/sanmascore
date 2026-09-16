@@ -6,11 +6,12 @@ import gspread
 
 st.set_page_config(page_title="三麻スコア計算", page_icon="🀄", layout="wide")
 
-# --- 0. パスワード認証機能 ---
+# --- 0. パスワード認証機能（パスワード固定版） ---
 def check_password():
     """パスワードが合っているかチェックする関数"""
     def password_entered():
-        if st.session_state["password"] == st.secrets["app_password"]:
+        # パスワードを "maitsukisanma" に直接設定
+        if st.session_state["password"] == "maitsukisanma":
             st.session_state["password_correct"] = True
             del st.session_state["password"]  # パスワードをセッションから削除
         else:
