@@ -7,6 +7,26 @@ import gspread
 st.set_page_config(page_title="三麻スコア計算", page_icon="🀄", layout="wide")
 
 # ==========================================
+# 0. パスワード保護設定
+# ==========================================
+PASSWORD = "maitsukisanma"
+
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    st.title("🀄 三麻専用 スコア・チップ計算")
+    st.subheader("🔒 パスワード認証")
+    input_pw = st.text_input("パスワードを入力してください", type="password")
+    if st.button("ログイン", type="primary"):
+        if input_pw == PASSWORD:
+            st.session_state.authenticated = True
+            st.rerun()
+        else:
+            st.error("パスワードが正しくありません。")
+    st.stop()
+
+# ==========================================
 # メインアプリ
 # ==========================================
 
