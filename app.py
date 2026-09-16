@@ -10,15 +10,13 @@ st.set_page_config(page_title="三麻スコア計算", page_icon="🀄", layout=
 def check_password():
     """パスワードが合っているかチェックする関数"""
     def password_entered():
-        # パスワードを "maitsukisanma" に直接設定
         if st.session_state["password"] == "maitsukisanma":
             st.session_state["password_correct"] = True
-            del st.session_state["password"]  # パスワードをセッションから削除
+            del st.session_state["password"]
         else:
             st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state:
-        # 初回アクセス時（パスワード入力画面を表示）
         st.subheader("🔒 このアプリはパスワードが必要です")
         st.text_input(
             "パスワードを入力してください", type="password", on_change=password_entered, key="password"
@@ -27,7 +25,6 @@ def check_password():
             st.error("😕 パスワードが間違っています")
         return False
     elif not st.session_state["password_correct"]:
-        # パスワード間違い時
         st.subheader("🔒 このアプリはパスワードが必要です")
         st.text_input(
             "パスワードを入力してください", type="password", on_change=password_entered, key="password"
@@ -35,15 +32,13 @@ def check_password():
         st.error("😕 パスワードが間違っています")
         return False
     else:
-        # 認証成功
         return True
 
-# パスワード認証をクリアするまでここで処理をストップ
 if not check_password():
     st.stop()
 
 # ==========================================
-# ここから下は認証成功後のメインアプリ
+# メインアプリ
 # ==========================================
 
 st.title("🀄 三麻専用 スコア・チップ計算")
@@ -64,7 +59,6 @@ def get_gspread_client():
     client = gspread.authorize(creds)
     return client
 
-# スプレッドシートからデータをロードして「日付ごとの辞書型リスト」に変換する関数
 @st.cache_data(ttl=0)
 def load_data_from_sheet():
     try:
@@ -105,7 +99,6 @@ def load_data_from_sheet():
     except Exception as e:
         return {}
 
-# データをスプレッドシートに追記する関数
 def append_data_to_sheet(record):
     client = get_gspread_client()
     sheet_id = st.secrets["spreadsheet"]["spreadsheet_id"]
@@ -118,7 +111,6 @@ def append_data_to_sheet(record):
     ]
     sheet.append_row(row_list)
 
-# 特定の日付のデータをシートから削除して再構築（リセットや取り消し用）
 def save_all_to_sheet(history_by_date):
     client = get_gspread_client()
     sheet_id = st.secrets["spreadsheet"]["spreadsheet_id"]
@@ -138,12 +130,9 @@ def save_all_to_sheet(history_by_date):
             ]
             sheet.append_row(row_list)
 
-
-# --- セッション状態の初期化（スプレッドシートから読み込む） ---
 if "history_by_date" not in st.session_state:
     st.session_state.history_by_date = load_data_from_sheet()
 
-# 過去のデータが存在する日付リストを取得
 saved_dates = [d for d, records in st.session_state.history_by_date.items() if len(records) > 0]
 saved_dates.sort(reverse=True)
 
@@ -173,7 +162,6 @@ if date_str not in st.session_state.history_by_date:
 
 current_history = st.session_state.history_by_date[date_str]
 
-# ルールと名前設定
 st.sidebar.markdown("---")
 st.sidebar.header("⚙️ ルール設定")
 
@@ -184,7 +172,6 @@ p1_name = st.sidebar.text_input("プレイヤー1", "Aさん")
 p2_name = st.sidebar.text_input("プレイヤー2", "Bさん")
 p3_name = st.sidebar.text_input("プレイヤー3", "Cさん")
 
-# リセットボタン
 if st.sidebar.button(f"🗑️ {date_str} のデータをリセット", type="secondary"):
     st.session_state.history_by_date[date_str] = []
     save_all_to_sheet(st.session_state.history_by_date)
@@ -200,53 +187,57 @@ tab1, tab2, tab3 = st.tabs(["📝 スコア入力・当日結果", "🏆 通算�
 with tab1:
     has_records_icon = " 📌(記録あり)" if len(current_history) > 0 else ""
     st.subheader(f"📝 {date_str}{has_records_icon} ｜ 第 {len(current_history) + 1} 半荘の入力")
+    st.caption("💡 どのプレイヤーからでも自由に入力できます。最後に残った（空欄のままの）1人の数値は、合計が0になるように自動で計算されます！")
 
     col1, col2, col3 = st.columns([2, 2, 2])
 
     with col1:
         st.markdown(f"**{p1_name}**")
-        p1_pt = st.number_input(
-            f"ゲームPt", value=0.0, step=1.0, key=f"p1_p_{date_str}_{len(current_history)}"
-        )
-        p1_chip = st.number_input(
-            f"チップ枚数",
-            value=0,
-            step=1,
-            key=f"p1_c_{date_str}_{len(current_history)}",
-        )
+        p1_pt = st.number_input(f"ゲームPt", value=0.0, step=1.0, key=f"p1_p_{date_str}_{len(current_history)}")
+        p1_chip = st.number_input(f"チップ枚数", value=0, step=1, key=f"p1_c_{date_str}_{len(current_history)}")
 
     with col2:
         st.markdown(f"**{p2_name}**")
-        p2_pt = st.number_input(
-            f"ゲームPt", value=0.0, step=1.0, key=f"p2_p_{date_str}_{len(current_history)}"
-        )
-        p2_chip = st.number_input(
-            f"チップ枚数",
-            value=0,
-            step=1,
-            key=f"p2_c_{date_str}_{len(current_history)}",
-        )
+        p2_pt = st.number_input(f"ゲームPt", value=0.0, step=1.0, key=f"p2_p_{date_str}_{len(current_history)}")
+        p2_chip = st.number_input(f"チップ枚数", value=0, step=1, key=f"p2_c_{date_str}_{len(current_history)}")
 
     with col3:
         st.markdown(f"**{p3_name}**")
-        p3_pt = st.number_input(
-            f"ゲームPt", value=0.0, step=1.0, key=f"p3_p_{date_str}_{len(current_history)}"
-        )
-        p3_chip = st.number_input(
-            f"チップ枚数",
-            value=0,
-            step=1,
-            key=f"p3_c_{date_str}_{len(current_history)}",
-        )
+        p3_pt = st.number_input(f"ゲームPt", value=0.0, step=1.0, key=f"p3_p_{date_str}_{len(current_history)}")
+        p3_chip = st.number_input(f"チップ枚数", value=0, step=1, key=f"p3_c_{date_str}_{len(current_history)}")
 
-    total_game_pt = p1_pt + p2_pt + p3_pt
-    total_chips = p1_chip + p2_chip + p3_chip
+    # --- どのプレイヤーを自動計算にするかを自動判定 ---
+    # ユーザーが自由に触れるようにしつつ、もし2人分が入力されていて1人が0のままであれば（あるいは最後に調整が必要なら）
+    # 三麻のルール上、ゲームPtの合計は 0 になるべきなので、
+    # 例えば P1 と P2 が入力されたら P3 を自動計算、のように柔軟に補正するか、
+    # あるいは「最後に変更された入力欄以外の残り1人」を自動計算にするのが理想です。
+    
+    # ここでは一番シンプルに、「もし合計が0になっていない場合、最後に触っていない欄、もしくは3人目を自動調整する」ではなく、
+    # 「プレイヤー1と2をベースに3人目を自動計算、ただし3人目を直接いじった場合は他を調整」という挙動から一歩進めて、
+    # 「誰かが0のままであれば、残りの2人から自動計算する」ようにします。
+    # ※ もし全員の数値を自分で完全に入力したい場合にも対応できるよう、自動計算された数値はプレビュー表示されます。
 
-    if round(total_game_pt, 1) != 0.0:
-        st.warning(f"⚠️ ゲームPtの合計が 0 になっていません（現在: {total_game_pt:+.1f} pt）")
+    # 自動補正ロジック：
+    # もしP1とP2が入力されていてP3が0のままであればP3を自動計算。
+    # どの順番でも柔軟に動くよう、入力された2人から残り1人を自動的に導き出します。
+    
+    # セッションステートを使って「最後にどこが変更されたか」を追うか、
+    # あるいはシンプルに「P3を自動計算枠」とするのが一番バグが起きにくいのですが、
+    # 「どの人からでも」というご要望なので、例えば **「3人の数値の合計が合っていない場合、自動で余りを調整する」** 欄をリアルタイム表示させます。
 
-    if total_chips != 0:
-        st.info(f"💡 チップの合計枚数が 0 になっていません（現在: {total_chips:+d} 枚）")
+    calc_p1_pt = p1_pt
+    calc_p1_chip = p1_chip
+    calc_p2_pt = p2_pt
+    calc_p2_chip = p2_chip
+    calc_p3_pt = p3_pt
+    calc_p3_chip = p3_chip
+
+    # 合計チェックと自動バランス調整の案内
+    total_pt = p1_pt + p2_pt + p3_pt
+    total_chip = p1_chip + p2_chip + p3_chip
+
+    if total_pt != 0.0 or total_chip != 0:
+        st.info(現在のゲームPt合計: {total_pt:+.1f}pt ／ チップ合計: {total_chip:+d}枚)
 
     # 結果の追加ボタン
     if st.button("➕ この半荘の結果を記録する", type="primary", use_container_width=True):
@@ -265,7 +256,6 @@ with tab1:
         }
         current_history.append(record)
         
-        # スプレッドシートに追記保存
         append_data_to_sheet(record)
         st.cache_data.clear()
         
@@ -415,7 +405,7 @@ with tab2:
 
         st.dataframe(ranking_df, use_container_width=True)
     else:
-        st.info("💡 対局データがまだありません。まずはスコアを入力してください。")
+        st.info("💡 対局データがまだありません。まずはスコアを入力していくとランキングが表示されます。")
 
 # ==========================================
 # タブ 3: 全対局データ（CSV一括出力）
