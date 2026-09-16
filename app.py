@@ -12,7 +12,6 @@ st.set_page_config(
 
 # Googleスプレッドシートに接続する関数
 def get_gspread_client():
-    # StreamlitのSecretsから認証情報を取得
     creds_dict = dict(st.secrets["gcp_service_account"])
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
@@ -36,7 +35,6 @@ def load_data():
         if not data or len(data) <= 1:
             return pd.DataFrame(columns=columns)
             
-        # 1行目をヘッダーとしてDataFrameを作成
         df = pd.DataFrame(data[1:], columns=columns[:len(data[0])])
         return df.dropna(how="all")
     except Exception as e:
@@ -49,7 +47,6 @@ def save_data(df):
     sheet_id = st.secrets["spreadsheet"]["spreadsheet_id"]
     sheet = client.open_by_key(sheet_id).worksheet("Sheet1")
     
-    # ヘッダーを含めて書き込み
     columns = ["日付", "半荘", "P1名", "P1_Pt", "P1_チップ", "P2名", "P2_Pt", "P2_チップ", "P3名", "P3_Pt", "P3_チップ"]
     sheet.clear()
     sheet.append_row(columns)
@@ -106,7 +103,7 @@ if submitted:
         "半荘": match_count,
         "P1名": p1_name, "P1_Pt": p1_pt, "P1_チップ": p1_chip,
         "P2名": p2_name, "P2_Pt": p2_pt, "P2_チップ": p2_chip,
-        "P3名": p3_name, "P3_Pt": p3_pt, "P3_チップ": p3_チップ,
+        "P3名": p3_name, "P3_Pt": p3_pt, "P3_チップ": p3_chip,
     }])
 
     # 既存データに追加して保存
