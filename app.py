@@ -197,7 +197,7 @@ with tab1:
         if f"p{p_num}_c_{date_str}_{game_idx}" not in st.session_state:
             st.session_state[f"p{p_num}_c_{date_str}_{game_idx}"] = 0
 
-    # 【重要】ウィジェットを描画する「前」に自動計算・書き換えを行っておく
+    # ウィジェットを描画する「前」に自動計算・書き換えを行っておく（通知メッセージは削除）
     points_list = [
         (1, st.session_state[f"p1_p_{date_str}_{game_idx}"], st.session_state[f"p1_c_{date_str}_{game_idx}"]),
         (2, st.session_state[f"p2_p_{date_str}_{game_idx}"], st.session_state[f"p2_c_{date_str}_{game_idx}"]),
@@ -206,7 +206,6 @@ with tab1:
     
     non_zero_items = [item for item in points_list if item[1] != 0.0 or item[2] != 0]
     
-    auto_msg = ""
     if len(non_zero_items) == 2:
         entered_idxs = [item[0] for item in non_zero_items]
         target_idx = [i for i in [1, 2, 3] if i not in entered_idxs][0]
@@ -215,16 +214,8 @@ with tab1:
         calc_pt = - (st.session_state[f"p{other_idxs[0]}_p_{date_str}_{game_idx}"] + st.session_state[f"p{other_idxs[1]}_p_{date_str}_{game_idx}"])
         calc_chip = - (st.session_state[f"p{other_idxs[0]}_c_{date_str}_{game_idx}"] + st.session_state[f"p{other_idxs[1]}_c_{date_str}_{game_idx}"])
         
-        target_name = p1_name if target_idx == 1 else (p2_name if target_idx == 2 else p3_name)
-        
-        # ウィジェット描画前なので安全にセッションを書き換えられる
         st.session_state[f"p{target_idx}_p_{date_str}_{game_idx}"] = calc_pt
         st.session_state[f"p{target_idx}_c_{date_str}_{game_idx}"] = calc_chip
-        
-        auto_msg = f"✨ **{target_name}** の数値を自動計算しました（ゲームPt: {calc_pt:+.1f} / チップ: {calc_chip:+d}枚）"
-
-    if auto_msg:
-        st.info(auto_msg)
 
     # 入力フォームの描画
     col1, col2, col3 = st.columns([2, 2, 2])
