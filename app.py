@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from google.oauth2.service_account import Credentials
 import gspread
+import base64
 
 # ページの設定
 st.set_page_config(
@@ -10,15 +11,20 @@ st.set_page_config(
     layout="centered"
 )
 
-# Googleスプレッドシートに接続する関数（秘密鍵の完全修復対応版）
+# Googleスプレッドシートに接続する関数（Base64対応版）
 def get_gspread_client():
     creds_dict = dict(st.secrets["gcp_service_account"])
     
+    # 秘密鍵がBase64エンコードされている場合（推奨）はデコードする
     if "private_key" in creds_dict:
-        pk = creds_dict["private_key"]
-        # 両端の余分な空白やクォーテーションを綺麗に掃除
-        pk = pk.strip()
-        # 万が一リテラル文字列の "\\n" になっていれば実改行に変換
+        pk = creds_dict["private_key"].strip()
+        # 改行がなく、かつBase64っぽい文字列（-------を含まない）ならデコードを試みる
+        if "-----BEGIN" not in pk:
+            try:
+                pk = base64.b64decode(pk).decode("utf-8")
+            except Exception:
+                pass
+        # 通常の改行エスケープの修復
         if "\\n" in pk and "\n" not in pk:
             pk = pk.replace("\\n", "\n")
         creds_dict["private_key"] = pk
@@ -95,7 +101,6 @@ with st.sidebar.form("score_form"):
     submitted = st.form_submit_button("計算して記録する")
 
 if submitted:
-    # 1行分のデータを作成
     new_row = pd.DataFrame([{
         "日付": str(match_date),
         "半荘": match_count,
@@ -104,7 +109,6 @@ if submitted:
         "P3名": p3_name, "P3_Pt": p3_pt_val, "P3_チップ": p3_chip_val,
     }])
 
-    # 既存データに追加して保存
     df = pd.concat([df, new_row], ignore_index=True)
     save_data(df)
     
