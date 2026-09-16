@@ -187,45 +187,128 @@ tab1, tab2, tab3 = st.tabs(["📝 スコア入力・当日結果", "🏆 通算�
 with tab1:
     has_records_icon = " 📌(記録あり)" if len(current_history) > 0 else ""
     st.subheader(f"📝 {date_str}{has_records_icon} ｜ 第 {len(current_history) + 1} 半荘の入力")
-    st.caption("💡 どのプレイヤーからでも自由に入力できます。")
+    st.caption("💡 どの2人分の数値を先に入力しても、**最後に残った1人**の数値が自動で計算されて埋まります！")
 
+    # セッションステートの初期化（入力値管理用）
+    game_idx = len(current_history)
+    for p_num in [1, 2, 3]:
+        if f"p{p_num}_p_{date_str}_{game_idx}" not in st.session_state:
+            st.session_state[f"p{p_num}_p_{date_str}_{game_idx}"] = 0.0
+        if f"p{p_num}_c_{date_str}_{game_idx}" not in st.session_state:
+            st.session_state[f"p{p_num}_c_{date_str}_{game_idx}"] = 0
+
+    # 最後に変更された（または入力されている）欄を自動判定して補完するロジック
+    # ユーザーがどの順番で触っても自然に動くよう、
+    # 例えば P1 と P2 が動かされたら P3 を自動計算、のように柔軟にハンドリングします。
+    # ここでは、「まだ数値が入っていない（あるいは0のままの）最後の1人を自動計算する」仕組みにします。
+    
     col1, col2, col3 = st.columns([2, 2, 2])
 
     with col1:
         st.markdown(f"**{p1_name}**")
-        p1_pt = st.number_input(f"ゲームPt", value=0.0, step=1.0, key=f"p1_p_{date_str}_{len(current_history)}")
-        p1_chip = st.number_input(f"チップ枚数", value=0, step=1, key=f"p1_c_{date_str}_{len(current_history)}")
+        p1_pt = st.number_input("ゲームPt", step=1.0, key=f"p1_p_{date_str}_{game_idx}")
+        p1_chip = st.number_input("チップ枚数", step=1, key=f"p1_c_{date_str}_{game_idx}")
 
     with col2:
         st.markdown(f"**{p2_name}**")
-        p2_pt = st.number_input(f"ゲームPt", value=0.0, step=1.0, key=f"p2_p_{date_str}_{len(current_history)}")
-        p2_chip = st.number_input(f"チップ枚数", value=0, step=1, key=f"p2_c_{date_str}_{len(current_history)}")
+        p2_pt = st.number_input("ゲームPt", step=1.0, key=f"p2_p_{date_str}_{game_idx}")
+        p2_chip = st.number_input("チップ枚数", step=1, key=f"p2_c_{date_str}_{game_idx}")
 
     with col3:
         st.markdown(f"**{p3_name}**")
-        p3_pt = st.number_input(f"ゲームPt", value=0.0, step=1.0, key=f"p3_p_{date_str}_{len(current_history)}")
-        p3_chip = st.number_input(f"チップ枚数", value=0, step=1, key=f"p3_c_{date_str}_{len(current_history)}")
+        p3_pt = st.number_input("ゲームPt", step=1.0, key=f"p3_p_{date_str}_{game_idx}")
+        p3_chip = st.number_input("チップ枚数", step=1, key=f"p3_c_{date_str}_{game_idx}")
 
-    total_pt = p1_pt + p2_pt + p3_pt
-    total_chip = p1_chip + p2_chip + p3_chip
+    # 自動計算の判定：
+    # どの2人が入力されたかを判定し、残りの1人を自動で算出・表示する
+    # ※ Streamlitでループを防ぐため、値が切り替わったときに自動計算を適用します
+    
+    # 簡易的かつ確実な方法として、「もしどれか2箇所が変更されたら、残りの1人を自動調整する」機能を追加します。
+    # ここでは常に「3人目のプレイヤー（P3）」を自動計算のターゲットにしつつ、
+    # ユーザーが「いや、P1かP2を自動にしたい」となった場合にも柔軟に動くよう、
+    # **「最後に空欄（0）だった人、または入力されていない人」**を自動で埋める方式にします。
 
-    if total_pt != 0.0 or total_chip != 0:
-        st.info(f"現在のゲームPt合計: {total_pt:+.1f}pt ／ チップ合計: {total_chip:+d}枚")
+    # チェック：もしP1とP2に値が入っていて、P3が0のままならP3を自動計算
+    # もしP1とP3に入力があり、P2が0ならP2を自動計算...といったように柔軟にします。
+    
+    # 直感的に一番分かりやすい「最後に触っていない人を自動計算」にするため、
+    # ラジオボタンや選択ではなく、**「入力の合計が0になるように自動調整してくれるプレビュー」**と、
+    # ワンクリックで「残り1人に自動配分するボタン」を置くのが一番バグが起きず確実です。
+    # ...ですが、「入力した瞬間に自動で変わってほしい」というご要望ですので、以下の自動連動ロジックを組み込みます。
+
+    # 自動連動：P1とP2が入力されたらP3を自動で書き換える（セッションを直接書き換え）
+    # ※これにより、P3の数値が自動的に変わります。
+    
+    # どの2人が入力されたか判定するための簡易ロジック
+    # ユーザーが自由に打てるよう、直前に変更された項目以外の残り1人を逆算します。
+    
+    # ここでは、シンプルに「P1とP2の合計のマイナスをP3に自動セットする」基本挙動に加え、
+    # どの欄からでも自由に計算できるように、専用の「自動計算ボタン」か「リアルタイム自動補完」を適用します。
+
+    # 確実に動くリアルタイム自動補完：
+    # プレイヤー1とプレイヤー2を入力したら、プレイヤー3が自動で「-(p1 + p2)」になるようにします。
+    # もしプレイヤー3を入力したい場合は、ラジオボタン等なしで「どの列を自動にするか」をアプリ側で賢く判断します。
+    
+    # ▼ 今回の改良版のキモ：
+    # 「プレイヤー1と2が入っていれば3を自動計算」「2と3が入っていれば1を自動計算」「1と3が入っていれば2を自動計算」
+    # をコードで自動判定して、画面の数値を書き換えます！
+
+    # 現在のセッション値を取得
+    curr_p1_p = st.session_state[f"p1_p_{date_str}_{game_idx}"]
+    curr_p2_p = st.session_state[f"p2_p_{date_str}_{game_idx}"]
+    curr_p3_p = st.session_state[f"p3_p_{date_str}_{game_idx}"]
+    
+    curr_p1_c = st.session_state[f"p1_c_{date_str}_{game_idx}"]
+    curr_p2_c = st.session_state[f"p2_c_{date_str}_{game_idx}"]
+    curr_p3_c = st.session_state[f"p3_c_{date_str}_{game_idx}"]
+
+    # どの欄が最後にいじられたかを判定しやすくするため、
+    # 「2箇所に数値が入っていて、1箇所が0（または未入力）のとき、その0の場所を自動計算して埋める」仕様にします！
+    
+    non_zero_pts = [p for p in [(1, curr_p1_p), (2, curr_p2_p), (3, curr_p3_p)] if p[1] != 0.0]
+    
+    auto_calculated_text = ""
+    if len(non_zero_pts) == 2:
+        # 2人分が入っている場合、残りの1人を自動計算
+        entered_indices = [p[0] for p in non_zero_pts]
+        target_idx = [i for i in [1, 2, 3] if i not in entered_indices][0]
+        
+        other_indices = entered_indices
+        calc_pt = - (st.session_state[f"p{other_indices[0]}_p_{date_str}_{game_idx}"] + st.session_state[f"p{other_indices[1]}_p_{date_str}_{game_idx}"])
+        calc_chip = - (st.session_state[f"p{other_indices[0]}_c_{date_str}_{game_idx}"] + st.session_state[f"p{other_indices[1]}_c_{date_str}_{game_idx}"])
+        
+        target_name = p1_name if target_idx == 1 else (p2_name if target_idx == 2 else p3_name)
+        auto_calculated_text = f"✨ **{target_name}** の数値を自動計算しました（ゲームPt: {calc_pt:+.1f} / チップ: {calc_chip:+d}枚）"
+        
+        # 自動で値をセット
+        st.session_state[f"p{target_idx}_p_{date_str}_{game_idx}"] = calc_pt
+        st.session_state[f"p{target_idx}_c_{date_str}_{game_idx}"] = calc_chip
+
+    if auto_calculated_text:
+        st.info(auto_calculated_text)
 
     # 結果の追加ボタン
     if st.button("➕ この半荘の結果を記録する", type="primary", use_container_width=True):
+        # 最終的な確定値
+        final_p1_pt = st.session_state[f"p1_p_{date_str}_{game_idx}"]
+        final_p1_chip = st.session_state[f"p1_c_{date_str}_{game_idx}"]
+        final_p2_pt = st.session_state[f"p2_p_{date_str}_{game_idx}"]
+        final_p2_chip = st.session_state[f"p2_c_{date_str}_{game_idx}"]
+        final_p3_pt = st.session_state[f"p3_p_{date_str}_{game_idx}"]
+        final_p3_chip = st.session_state[f"p3_c_{date_str}_{game_idx}"]
+
         record = {
             "日付": date_str,
-            "半荘": f"第{len(current_history) + 1}半荘",
+            "半荘": f"第{game_idx + 1}半荘",
             "p1_name": p1_name,
             "p2_name": p2_name,
             "p3_name": p3_name,
-            "p1_pt": p1_pt,
-            "p2_pt": p2_pt,
-            "p3_pt": p3_pt,
-            "p1_chip": p1_chip,
-            "p2_chip": p2_chip,
-            "p3_chip": p3_chip,
+            "p1_pt": final_p1_pt,
+            "p2_pt": final_p2_pt,
+            "p3_pt": final_p3_pt,
+            "p1_chip": final_p1_chip,
+            "p2_chip": final_p2_chip,
+            "p3_chip": final_p3_chip,
         }
         current_history.append(record)
         
