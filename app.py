@@ -85,12 +85,13 @@ if st.button(
 ):
     record = {
         "半荘": f"第{len(st.session_state.history) + 1}半荘",
-        f"{p1_name}_ゲームPt": p1_pt,
-        f"{p1_name}_チップ": p1_chip,
-        f"{p2_name}_ゲームPt": p2_pt,
-        f"{p2_name}_チップ": p2_chip,
-        f"{p3_name}_ゲームPt": p3_pt,
-        f"{p3_name}_チップ": p3_chip,
+        f"{p1_name}": p1_pt,
+        f"{p2_name}": p2_pt,
+        f"{p3_name}": p3_pt,
+        # 内部計算用にチップ情報も保持
+        "_p1_chip": p1_chip,
+        "_p2_chip": p2_chip,
+        "_p3_chip": p3_chip,
     }
     st.session_state.history.append(record)
     st.success(
@@ -105,15 +106,15 @@ if st.session_state.history:
 
     # トータル計算（ゲームPt + チップ枚数 × レート）
     p1_sum = sum(
-        r[f"{p1_name}_ゲームPt"] + (r[f"{p1_name}_チップ"] * chip_rate)
+        r[p1_name] + (r["_p1_chip"] * chip_rate)
         for r in st.session_state.history
     )
     p2_sum = sum(
-        r[f"{p2_name}_ゲームPt"] + (r[f"{p2_name}_チップ"] * chip_rate)
+        r[p2_name] + (r["_p2_chip"] * chip_rate)
         for r in st.session_state.history
     )
     p3_sum = sum(
-        r[f"{p3_name}_ゲームPt"] + (r[f"{p3_name}_チップ"] * chip_rate)
+        r[p3_name] + (r["_p3_chip"] * chip_rate)
         for r in st.session_state.history
     )
 
@@ -130,10 +131,12 @@ if st.session_state.history:
         with cols[idx]:
             st.metric(label=f"{idx+1}位 : {t['name']}", value=f"{t['total']:+.1f} pt")
 
-    # 履歴テーブル（合計Ptを省いたスッキリ表示）
+    # 履歴テーブル（内部データ以外を表示）
     st.subheader("📜 対局履歴")
     df = pd.DataFrame(st.session_state.history)
-    st.dataframe(df, use_container_width=True)
+    # 表示用から内部用カラムを除外
+    display_df = df[["半荘", p1_name, p2_name, p3_name]]
+    st.dataframe(display_df, use_container_width=True)
 
     # 1件削除機能
     if st.button("↩️ 最後の半荘を取り消す"):
@@ -141,7 +144,7 @@ if st.session_state.history:
         st.rerun()
 
     # CSVダウンロードボタン
-    csv = df.to_csv(index=False).encode("utf-8-sig")
+    csv = display_df.to_csv(index=False).encode("utf-8-sig")
     st.download_button(
         label="💾 結果をCSVファイルで保存（ダウンロード）",
         data=csv,
