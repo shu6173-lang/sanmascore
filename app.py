@@ -6,37 +6,6 @@ import gspread
 
 st.set_page_config(page_title="三麻スコア計算", page_icon="🀄", layout="wide")
 
-# --- 0. パスワード認証機能（パスワード固定版） ---
-def check_password():
-    """パスワードが合っているかチェックする関数"""
-    def password_entered():
-        if st.session_state["password"] == "maitsukisanma":
-            st.session_state["password_correct"] = True
-            del st.session_state["password"]
-        else:
-            st.session_state["password_correct"] = False
-
-    if "password_correct" not in st.session_state:
-        st.subheader("🔒 このアプリはパスワードが必要です")
-        st.text_input(
-            "パスワードを入力してください", type="password", on_change=password_entered, key="password"
-        )
-        if "password_correct" in st.session_state and not st.session_state["password_correct"]:
-            st.error("😕 パスワードが間違っています")
-        return False
-    elif not st.session_state["password_correct"]:
-        st.subheader("🔒 このアプリはパスワードが必要です")
-        st.text_input(
-            "パスワードを入力してください", type="password", on_change=password_entered, key="password"
-        )
-        st.error("😕 パスワードが間違っています")
-        return False
-    else:
-        return True
-
-if not check_password():
-    st.stop()
-
 # ==========================================
 # メインアプリ
 # ==========================================
@@ -186,7 +155,6 @@ tab1, tab2, tab3 = st.tabs(["📝 スコア入力・当日結果", "🏆 通算�
 with tab1:
     has_records_icon = " 📌(記録あり)" if len(current_history) > 0 else ""
     st.subheader(f"📝 {date_str}{has_records_icon} ｜ 第 {len(current_history) + 1} 半荘の入力")
-    st.caption("💡 どの2人分の数値を先に入力しても、最後に残った1人の数値が自動でマイナス計算されて埋まります！")
 
     game_idx = len(current_history)
     
@@ -197,7 +165,7 @@ with tab1:
         if f"p{p_num}_c_{date_str}_{game_idx}" not in st.session_state:
             st.session_state[f"p{p_num}_c_{date_str}_{game_idx}"] = 0
 
-    # ウィジェットを描画する「前」に自動計算・書き換えを行っておく（通知メッセージは削除）
+    # ウィジェットを描画する「前」に自動計算・書き換えを行っておく
     points_list = [
         (1, st.session_state[f"p1_p_{date_str}_{game_idx}"], st.session_state[f"p1_c_{date_str}_{game_idx}"]),
         (2, st.session_state[f"p2_p_{date_str}_{game_idx}"], st.session_state[f"p2_c_{date_str}_{game_idx}"]),
