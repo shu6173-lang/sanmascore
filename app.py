@@ -165,62 +165,64 @@ with tab1:
         if f"p{p_num}_c_{date_str}_{game_idx}" not in st.session_state:
             st.session_state[f"p{p_num}_c_{date_str}_{game_idx}"] = 0
 
-    # 1人目・2人目を入力したら、3人目が自動で残り（マイナスの合計）を背負う計算ロジック
-    p1_p = st.session_state[f"p1_p_{date_str}_{game_idx}"]
-    p1_c = st.session_state[f"p1_c_{date_str}_{game_idx}"]
-    p2_p = st.session_state[f"p2_p_{date_str}_{game_idx}"]
-    p2_c = st.session_state[f"p2_c_{date_str}_{game_idx}"]
-
-    # 3人目の値を自動計算してセッションに反映
-    calc_p3_p = -(p1_p + p2_p)
-    calc_p3_c = -(p1_c + p2_c)
-    
-    st.session_state[f"p3_p_{date_str}_{game_idx}"] = calc_p3_p
-    st.session_state[f"p3_c_{date_str}_{game_idx}"] = calc_p3_c
-
-    # 入力フォームの描画
+    # 入力フォームの描画（3人とも自由に操作可能）
     col1, col2, col3 = st.columns([2, 2, 2])
 
     with col1:
         st.markdown(f"**{p1_name}**")
-        st.number_input("ゲームPt", step=1.0, key=f"p1_p_{date_str}_{game_idx}")
-        st.number_input("チップ枚数", step=1, key=f"p1_c_{date_str}_{game_idx}")
+        p1_pt = st.number_input("ゲームPt", step=1.0, key=f"p1_p_{date_str}_{game_idx}")
+        p1_chip = st.number_input("チップ枚数", step=1, key=f"p1_c_{date_str}_{game_idx}")
 
     with col2:
         st.markdown(f"**{p2_name}**")
-        st.number_input("ゲームPt", step=1.0, key=f"p2_p_{date_str}_{game_idx}")
-        st.number_input("チップ枚数", step=1, key=f"p2_c_{date_str}_{game_idx}")
+        p2_pt = st.number_input("ゲームPt", step=1.0, key=f"p2_p_{date_str}_{game_idx}")
+        p2_chip = st.number_input("チップ枚数", step=1, key=f"p2_c_{date_str}_{game_idx}")
 
     with col3:
-        st.markdown(f"**{p3_name} (自動計算)**")
-        # 3人目は自動計算結果を表示（disabledで固定）
-        p3_pt = st.number_input("ゲームPt", value=calc_p3_p, disabled=True, key=f"p3_p_display_{date_str}_{game_idx}")
-        p3_chip = st.number_input("チップ枚数", value=calc_p3_c, disabled=True, key=f"p3_c_display_{date_str}_{game_idx}")
+        st.markdown(f"**{p3_name}**")
+        p3_pt = st.number_input("ゲームPt", step=1.0, key=f"p3_p_{date_str}_{game_idx}")
+        p3_chip = st.number_input("チップ枚数", step=1, key=f"p3_c_{date_str}_{game_idx}")
 
-    st.success("✨ 1・2人目の数値を入力すると、3人目の数値が自動でバランス（合計0）するように計算されます。", icon="ℹ️")
+    # 合計値のチェック
+    total_pt = p1_pt + p2_pt + p3_pt
+    total_chip = p1_chip + p2_chip + p3_chip
+
+    if total_pt != 0.0 or total_chip != 0:
+        st.warning(f"⚠️ 合計が 0 になっていません (ゲームPt合計: {total_pt:+.1f} / チップ合計: {total_chip:+d}枚)")
+        
+        # 「自動で3人目を調整して0にする」便利ボタン
+        if st.button("🪄 3人目の数値を自動調整して合計を0にする"):
+            st.session_state[f"p3_p_{date_str}_{game_idx}"] = - (p1_pt + p2_pt)
+            st.session_state[f"p3_c_{date_str}_{game_idx}"] = - (p1_chip + p2_chip)
+            st.rerun()
+    else:
+        st.success("✨ 合計が綺麗に 0 になっています！", icon="✅")
 
     # 結果の追加ボタン
     if st.button("➕ この半荘の結果を記録する", type="primary", use_container_width=True):
-        record = {
-            "日付": date_str,
-            "半荘": f"第{game_idx + 1}半荘",
-            "p1_name": p1_name,
-            "p2_name": p2_name,
-            "p3_name": p3_name,
-            "p1_pt": p1_p,
-            "p2_pt": p2_p,
-            "p3_pt": calc_p3_p,
-            "p1_chip": p1_c,
-            "p2_chip": p2_c,
-            "p3_chip": calc_p3_c,
-        }
-        current_history.append(record)
-        
-        append_data_to_sheet(record)
-        st.cache_data.clear()
-        
-        st.success(f"{date_str} の第 {len(current_history)} 半荘の結果を記録しました！（スプレッドシートに保存完了）")
-        st.rerun()
+        if total_pt != 0.0 or total_chip != 0:
+            st.error("エラー：ゲームPtとチップの合計がそれぞれ0になるように調整してください。（上の自動調整ボタンも使えます）")
+        else:
+            record = {
+                "日付": date_str,
+                "半荘": f"第{game_idx + 1}半荘",
+                "p1_name": p1_name,
+                "p2_name": p2_name,
+                "p3_name": p3_name,
+                "p1_pt": p1_pt,
+                "p2_pt": p2_pt,
+                "p3_pt": p3_pt,
+                "p1_chip": p1_chip,
+                "p2_chip": p2_chip,
+                "p3_chip": p3_chip,
+            }
+            current_history.append(record)
+            
+            append_data_to_sheet(record)
+            st.cache_data.clear()
+            
+            st.success(f"{date_str} の第 {len(current_history)} 半荘の結果を記録しました！（スプレッドシートに保存完了）")
+            st.rerun()
 
     # 選択した日付の成績表示
     if current_history:
@@ -405,3 +407,4 @@ with tab3:
         )
     else:
         st.info("📦 保存されているデータはありません。")
+        
