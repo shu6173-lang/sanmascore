@@ -167,21 +167,27 @@ with tab1:
         if c_key not in st.session_state:
             st.session_state[c_key] = 0
 
-    # どのプレイヤーの数値をいじっても、残りの2人のうち2番目の人（プレイヤー3）が自動で帳尻を合わせて合計0にするコールバック
+    # コールバック関数（他の2人が両方とも0のときは勝手に計算しない）
     def make_callback(changed_p_num, is_chip):
         def callback():
-            # ターゲットのキー
             target_type = "c" if is_chip else "p"
             target_key = f"p{changed_p_num}_{target_type}_{date_str}_{game_idx}"
             
-            # 今回変更されたプレイヤー以外の2人の番号
             others = [p for p in [1, 2, 3] if p != changed_p_num]
-            # シンプルに「プレイヤー3（いなければothers[1]）」に全調整を負担させることで綺麗に連動させる
+            other1_key = f"p{others[0]}_{target_type}_{date_str}_{game_idx}"
+            other2_key = f"p{others[1]}_{target_type}_{date_str}_{game_idx}"
+            
+            val_other1 = st.session_state[other1_key]
+            val_other2 = st.session_state[other2_key]
+            
+            # 【重要】他の2人が両方とも0（または初期状態）のときは、勝手に自動計算させずにそのままにする
+            if val_other1 == 0 and val_other2 == 0:
+                return
+            
+            # それ以外（誰かがすでに数値を入力している状態）のときは、一番最後のプレイヤー（またはothers[1]）に帳尻を合わせる
             adjust_p_num = 3 if 3 in others else others[1]
             other_p_num = others[0] if others[0] != adjust_p_num else others[1]
             
-            # 現在の3人の合計が0になるように、調整役(adjust_p_num)の値を自動計算して逆算代入する
-            # (変更された値 + もう一人の値 + 調整役の値 = 0  --> 調整役 = -(変更値 + もう一人))
             other_key = f"p{other_p_num}_{target_type}_{date_str}_{game_idx}"
             adjust_key = f"p{adjust_p_num}_{target_type}_{date_str}_{game_idx}"
             
@@ -195,7 +201,7 @@ with tab1:
                 
         return callback
 
-    # 入力フォームの描画（3人とも自由に入力・プラスマイナス操作可能、連動つき）
+    # 入力フォームの描画
     col1, col2, col3 = st.columns([2, 2, 2])
 
     with col1:
