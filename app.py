@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
-from st_gsheets_connection import GSheetsConnection
+from google.oauth2.service_account import Credentials
+import gspread
 
 # ページの設定
 st.set_page_config(
@@ -9,27 +10,51 @@ st.set_page_config(
     layout="centered"
 )
 
-# Google Sheets Connection の初期化
-conn = st.connection("gsheets", type=GSheetsConnection)
+# Googleスプレッドシートに接続する関数
+def get_gspread_client():
+    # StreamlitのSecretsから認証情報を取得
+    creds_dict = dict(st.secrets["gcp_service_account"])
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+    ]
+    creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+    client = gspread.authorize(creds)
+    return client
 
-# スプレッドシートからデータを読み込む（A〜K列の11列）
+# スプレッドシートからデータを読み込む
 @st.cache_data(ttl=0)
 def load_data():
     try:
-        df = conn.read(worksheet="Sheet1", usecols=list(range(11)), ttl=0)
+        client = get_gspread_client()
+        sheet_id = st.secrets["spreadsheet"]["spreadsheet_id"]
+        sheet = client.open_by_key(sheet_id).worksheet("Sheet1")
+        data = sheet.get_all_values()
+        
         columns = ["日付", "半荘", "P1名", "P1_Pt", "P1_チップ", "P2名", "P2_Pt", "P2_チップ", "P3名", "P3_Pt", "P3_チップ"]
-        if df.empty or df.dropna(how="all").empty:
+        
+        if not data or len(data) <= 1:
             return pd.DataFrame(columns=columns)
-        # 列名がズレないように整える
-        df.columns = columns[:len(df.columns)]
+            
+        # 1行目をヘッダーとしてDataFrameを作成
+        df = pd.DataFrame(data[1:], columns=columns[:len(data[0])])
         return df.dropna(how="all")
     except Exception as e:
         columns = ["日付", "半荘", "P1名", "P1_Pt", "P1_チップ", "P2名", "P2_Pt", "P2_チップ", "P3名", "P3_Pt", "P3_チップ"]
         return pd.DataFrame(columns=columns)
 
-# データの保存関数
+# データをスプレッドシートに保存する
 def save_data(df):
-    conn.update(worksheet="Sheet1", data=df)
+    client = get_gspread_client()
+    sheet_id = st.secrets["spreadsheet"]["spreadsheet_id"]
+    sheet = client.open_by_key(sheet_id).worksheet("Sheet1")
+    
+    # ヘッダーを含めて書き込み
+    columns = ["日付", "半荘", "P1名", "P1_Pt", "P1_チップ", "P2名", "P2_Pt", "P2_チップ", "P3名", "P3_Pt", "P3_チップ"]
+    sheet.clear()
+    sheet.append_row(columns)
+    for _, row in df.iterrows():
+        sheet.append_row(row.tolist())
 
 # アプリのタイトル
 st.title("🀄 サンマ（3人麻雀）スコア＆チップ計算")
