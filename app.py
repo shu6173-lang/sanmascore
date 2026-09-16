@@ -154,76 +154,64 @@ tab1, tab2, tab3 = st.tabs(["📝 スコア入力・当日結果", "🏆 通算�
 # ==========================================
 with tab1:
     has_records_icon = " 📌(記録あり)" if len(current_history) > 0 else ""
-    st.subheader(f"📝 {date_str}{has_records_icon} ｜ 第 {len(current_history) + 1} 半荘の入力")
-
     game_idx = len(current_history)
+    st.subheader(f"📝 {date_str}{has_records_icon} ｜ 第 {game_idx + 1} 半荘の入力")
+
+    # セッションステートの初期化（計算用の一時保管場所）
+    state_key_p3_pt = f"calc_p3_pt_{date_str}_{game_idx}"
+    state_key_p3_chip = f"calc_p3_chip_{date_str}_{game_idx}"
+
+    if state_key_p3_pt not in st.session_state:
+        st.session_state[state_key_p3_pt] = 0.0
+    if state_key_p3_chip not in st.session_state:
+        st.session_state[state_key_p3_chip] = 0
+
+    # フォームを使って入力と送信を安全に管理
+    with st.form(key=f"score_form_{date_str}_{game_idx}"):
+        col1, col2, col3 = st.columns([2, 2, 2])
+
+        with col1:
+            st.markdown(f"**{p1_name}**")
+            p1_pt = st.number_input("ゲームPt", step=1.0, value=0.0, key=f"form_p1_p_{date_str}_{game_idx}")
+            p1_chip = st.number_input("チップ枚数", step=1, value=0, key=f"form_p1_c_{date_str}_{game_idx}")
+
+        with col2:
+            st.markdown(f"**{p2_name}**")
+            p2_pt = st.number_input("ゲームPt", step=1.0, value=0.0, key=f"form_p2_p_{date_str}_{game_idx}")
+            p2_chip = st.number_input("チップ枚数", step=1, value=0, key=f"form_p2_c_{date_str}_{game_idx}")
+
+        with col3:
+            st.markdown(f"**{p3_name}** (自動調整可)")
+            p3_pt = st.number_input("ゲームPt", step=1.0, value=st.session_state[state_key_p3_pt], key=f"form_p3_p_{date_str}_{game_idx}")
+            p3_chip = st.number_input("チップ枚数", step=1, value=st.session_state[state_key_p3_chip], key=f"form_p3_c_{date_str}_{game_idx}")
+
+        submitted = st.form_submit_button("➕ この半荘の結果を記録する", type="primary", use_container_width=True)
+
+    # リアルタイムでの合計値確認と自動調整ボタン（フォームの外に配置することで確実にリランと値の反映が行われます）
+    # ※フォーム外から現在の入力値を拾うため st.session_state から取得
+    cur_p1_pt = st.session_state.get(f"form_p1_p_{date_str}_{game_idx}", 0.0)
+    cur_p2_pt = st.session_state.get(f"form_p2_p_{date_str}_{game_idx}", 0.0)
+    cur_p3_pt = st.session_state.get(f"form_p3_p_{date_str}_{game_idx}", 0.0)
     
-    # セッションステート（保持用）の初期化
-    val_p1_p = f"val_p1_p_{date_str}_{game_idx}"
-    val_p1_c = f"val_p1_c_{date_str}_{game_idx}"
-    val_p2_p = f"val_p2_p_{date_str}_{game_idx}"
-    val_p2_c = f"val_p2_c_{date_str}_{game_idx}"
-    val_p3_p = f"val_p3_p_{date_str}_{game_idx}"
-    val_p3_c = f"val_p3_c_{date_str}_{game_idx}"
+    cur_p1_chip = st.session_state.get(f"form_p1_c_{date_str}_{game_idx}", 0)
+    cur_p2_chip = st.session_state.get(f"form_p2_c_{date_str}_{game_idx}", 0)
+    cur_p3_chip = st.session_state.get(f"form_p3_c_{date_str}_{game_idx}", 0)
 
-    for key, default_val in [
-        (val_p1_p, 0.0), (val_p1_c, 0),
-        (val_p2_p, 0.0), (val_p2_c, 0),
-        (val_p3_p, 0.0), (val_p3_c, 0)
-    ]:
-        if key not in st.session_state:
-            st.session_state[key] = default_val
-
-    # 自動調整ボタンが押されたときの処理
-    if st.session_state.get("auto_calc_triggered", False):
-        st.session_state[val_p3_p] = st.session_state.get("temp_p3_p", 0.0)
-        st.session_state[val_p3_c] = st.session_state.get("temp_p3_c", 0)
-        st.session_state["auto_calc_triggered"] = False
-
-    col1, col2, col3 = st.columns([2, 2, 2])
-
-    with col1:
-        st.markdown(f"**{p1_name}**")
-        p1_pt = st.number_input("ゲームPt", step=1.0, value=st.session_state[val_p1_p], key=f"input_p1_p_{date_str}_{game_idx}")
-        p1_chip = st.number_input("チップ枚数", step=1, value=st.session_state[val_p1_c], key=f"input_p1_c_{date_str}_{game_idx}")
-
-    with col2:
-        st.markdown(f"**{p2_name}**")
-        p2_pt = st.number_input("ゲームPt", step=1.0, value=st.session_state[val_p2_p], key=f"input_p2_p_{date_str}_{game_idx}")
-        p2_chip = st.number_input("チップ枚数", step=1, value=st.session_state[val_p2_c], key=f"input_p2_c_{date_str}_{game_idx}")
-
-    with col3:
-        st.markdown(f"**{p3_name}**")
-        p3_pt = st.number_input("ゲームPt", step=1.0, value=st.session_state[val_p3_p], key=f"input_p3_p_{date_str}_{game_idx}")
-        p3_chip = st.number_input("チップ枚数", step=1, value=st.session_state[val_p3_c], key=f"input_p3_c_{date_str}_{game_idx}")
-
-    # 入力値を常に保持用ステートにも同期させる
-    st.session_state[val_p1_p] = p1_pt
-    st.session_state[val_p1_c] = p1_chip
-    st.session_state[val_p2_p] = p2_pt
-    st.session_state[val_p2_c] = p2_chip
-    st.session_state[val_p3_p] = p3_pt
-    st.session_state[val_p3_c] = p3_chip
-
-    # 合計値の確認
-    total_pt = p1_pt + p2_pt + p3_pt
-    total_chip = p1_chip + p2_chip + p3_chip
+    total_pt = cur_p1_pt + cur_p2_pt + cur_p3_pt
+    total_chip = cur_p1_chip + cur_p2_chip + cur_p3_chip
 
     if total_pt != 0.0 or total_chip != 0:
         st.warning(f"⚠️ 合計が 0 になっていません (ゲームPt合計: {total_pt:+.1f} / チップ合計: {total_chip:+d}枚)")
         
         if st.button("🪄 3人目の数値を自動調整して合計を0にする", use_container_width=True):
-            st.session_state["temp_p3_p"] = - (p1_pt + p2_pt)
-            st.session_state["temp_p3_c"] = - (p1_chip + p2_chip)
-            st.session_state["auto_calc_triggered"] = True
+            st.session_state[state_key_p3_pt] = - (cur_p1_pt + cur_p2_pt)
+            st.session_state[state_key_p3_chip] = - (cur_p1_chip + cur_p2_chip)
             st.rerun()
     else:
         st.success("✨ 合計が綺麗に 0 になっています！", icon="✅")
 
-    st.markdown("---")
-
-    # 結果の追加ボタン
-    if st.button("➕ この半荘の結果を記録する", type="primary", use_container_width=True):
+    # フォームが送信されたときの処理
+    if submitted:
         if total_pt != 0.0 or total_chip != 0:
             st.error("エラー：ゲームPtとチップの合計がそれぞれ0になるように調整してください。（上の自動調整ボタンも使えます）")
         else:
@@ -233,14 +221,18 @@ with tab1:
                 "p1_name": p1_name,
                 "p2_name": p2_name,
                 "p3_name": p3_name,
-                "p1_pt": p1_pt,
-                "p2_pt": p2_pt,
-                "p3_pt": p3_pt,
-                "p1_chip": p1_chip,
-                "p2_chip": p2_chip,
-                "p3_chip": p3_chip,
+                "p1_pt": cur_p1_pt,
+                "p2_pt": cur_p2_pt,
+                "p3_pt": cur_p3_pt,
+                "p1_chip": cur_p1_chip,
+                "p2_chip": cur_p2_chip,
+                "p3_chip": cur_p3_chip,
             }
             current_history.append(record)
+            
+            # 記録成功時は一時ステートをリセット
+            st.session_state[state_key_p3_pt] = 0.0
+            st.session_state[state_key_p3_chip] = 0
             
             append_data_to_sheet(record)
             st.cache_data.clear()
