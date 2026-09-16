@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 from google.oauth2.service_account import Credentials
 import gspread
-import base64
 
 # ページの設定
 st.set_page_config(
@@ -11,22 +10,15 @@ st.set_page_config(
     layout="centered"
 )
 
-# Googleスプレッドシートに接続する関数（Base64対応版）
+# Googleスプレッドシートに接続する関数
 def get_gspread_client():
+    # StreamlitのSecretsから辞書を取得
     creds_dict = dict(st.secrets["gcp_service_account"])
     
-    # 秘密鍵がBase64エンコードされている場合（推奨）はデコードする
+    # 秘密鍵の改行文字（\n）が文字列としてエスケープされている場合に正しく直す
     if "private_key" in creds_dict:
-        pk = creds_dict["private_key"].strip()
-        # 改行がなく、かつBase64っぽい文字列（-------を含まない）ならデコードを試みる
-        if "-----BEGIN" not in pk:
-            try:
-                pk = base64.b64decode(pk).decode("utf-8")
-            except Exception:
-                pass
-        # 通常の改行エスケープの修復
-        if "\\n" in pk and "\n" not in pk:
-            pk = pk.replace("\\n", "\n")
+        pk = creds_dict["private_key"]
+        pk = pk.replace("\\n", "\n")
         creds_dict["private_key"] = pk
 
     scopes = [
