@@ -157,15 +157,6 @@ with tab1:
     game_idx = len(current_history)
     st.subheader(f"📝 {date_str}{has_records_icon} ｜ 第 {game_idx + 1} 半荘の入力")
 
-    # セッションステートの初期化（3人目の自動計算値を保持するため）
-    p3_pt_key = f"p3_pt_{date_str}_{game_idx}"
-    p3_chip_key = f"p3_chip_{date_str}_{game_idx}"
-
-    if p3_pt_key not in st.session_state:
-        st.session_state[p3_pt_key] = 0.0
-    if p3_chip_key not in st.session_state:
-        st.session_state[p3_chip_key] = 0
-
     col1, col2, col3 = st.columns([2, 2, 2])
 
     with col1:
@@ -179,41 +170,21 @@ with tab1:
         p2_chip = st.number_input("チップ枚数", step=1, value=0, key=f"p2_c_{date_str}_{game_idx}")
 
     with col3:
-        st.markdown(f"**{p3_name}** (自動調整可)")
-        # 3人目は session_state の値をバインドして表示
-        p3_pt = st.number_input("ゲームPt", step=1.0, value=st.session_state[p3_pt_key], key=f"p3_p_{date_str}_{game_idx}")
-        p3_chip = st.number_input("チップ枚数", step=1, value=st.session_state[p3_chip_key], key=f"p3_c_{date_str}_{game_idx}")
-
-    # 現在の入力値から自動計算用の値をステートに常時同期
-    st.session_state[p3_pt_key] = p3_pt
-    st.session_state[p3_chip_key] = p3_chip
+        st.markdown(f"**{p3_name}**")
+        p3_pt = st.number_input("ゲームPt", step=1.0, value=0.0, key=f"p3_p_{date_str}_{game_idx}")
+        p3_chip = st.number_input("チップ枚数", step=1, value=0, key=f"p3_c_{date_str}_{game_idx}")
 
     total_pt = p1_pt + p2_pt + p3_pt
     total_chip = p1_chip + p2_chip + p3_chip
-
-    st.markdown("---")
-
-    # 自動調整ボタンと登録ボタンを並べて配置
-    col_btn1, col_btn2 = st.columns([1, 1])
-
-    with col_btn1:
-        if st.button("🪄 3人目を自動調整して合計を0にする", use_container_width=True):
-            st.session_state[p3_pt_key] = - (p1_pt + p2_pt)
-            st.session_state[p3_chip_key] = - (p1_chip + p2_chip)
-            st.rerun()
-
-    with col_btn2:
-        register_clicked = st.button("➕ この半荘の結果を記録する", type="primary", use_container_width=True)
 
     if total_pt != 0.0 or total_chip != 0:
         st.warning(f"⚠️ 合計が 0 になっていません (ゲームPt合計: {total_pt:+.1f} / チップ合計: {total_chip:+d}枚)")
     else:
         st.success("✨ 合計が綺麗に 0 になっています！", icon="✅")
 
-    # 登録ボタンが押されたときの処理
-    if register_clicked:
+    if st.button("➕ この半荘の結果を記録する", type="primary", use_container_width=True):
         if total_pt != 0.0 or total_chip != 0:
-            st.error("エラー：ゲームPtとチップの合計がそれぞれ0になるように調整してください。（「3人目を自動調整」ボタンが使えます）")
+            st.error("エラー：ゲームPtとチップの合計がそれぞれ0になるように調整してください。")
         else:
             record = {
                 "日付": date_str,
@@ -229,11 +200,6 @@ with tab1:
                 "p3_chip": p3_chip,
             }
             current_history.append(record)
-            
-            # 記録成功時は3人目の保持ステートをリセット
-            st.session_state[p3_pt_key] = 0.0
-            st.session_state[p3_chip_key] = 0
-            
             append_data_to_sheet(record)
             st.cache_data.clear()
             
