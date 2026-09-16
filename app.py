@@ -13,7 +13,6 @@ st.set_page_config(
 # Googleスプレッドシートに接続する関数（秘密鍵の改行エラー対策版）
 def get_gspread_client():
     creds_dict = dict(st.secrets["gcp_service_account"])
-    # 秘密鍵の改行コードを正しく矯正する処理
     if "private_key" in creds_dict:
         creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
         
@@ -73,18 +72,18 @@ with st.sidebar.form("score_form"):
     # 3人分のプレイヤー名とpt・チップの入力
     st.subheader("プレイヤー1")
     p1_name = st.text_input("名前 (1)", "プレイヤーA")
-    p1_pt = st.number_input("ポイント (1) [例: +15, -10]", value=0.0, step=1.0, format="%.1f")
-    p1_chip = st.number_input("チップ数 (1)", value=0, step=1)
+    p1_pt_val = st.number_input("ポイント (1) [例: +15, -10]", value=0.0, step=1.0, format="%.1f")
+    p1_chip_val = st.number_input("チップ数 (1)", value=0, step=1)
 
     st.subheader("プレイヤー2")
     p2_name = st.text_input("名前 (2)", "プレイヤーB")
-    p2_pt = st.number_input("ポイント (2) [例: +5, -5]", value=0.0, step=1.0, format="%.1f")
-    p2_chip = st.number_input("チップ数 (2)", value=0, step=1)
+    p2_pt_val = st.number_input("ポイント (2) [例: +5, -5]", value=0.0, step=1.0, format="%.1f")
+    p2_chip_val = st.number_input("チップ数 (2)", value=0, step=1)
 
     st.subheader("プレイヤー3")
     p3_name = st.text_input("名前 (3)", "プレイヤーC")
-    p3_pt = st.number_input("ポイント (3) [例: -20, +10]", value=0.0, step=1.0, format="%.1f")
-    p3_chip = st.number_input("チップ数 (3)", value=0, step=1)
+    p3_pt_val = st.number_input("ポイント (3) [例: -20, +10]", value=0.0, step=1.0, format="%.1f")
+    p3_chip_val = st.number_input("チップ数 (3)", value=0, step=1)
 
     submitted = st.form_submit_button("計算して記録する")
 
@@ -93,9 +92,9 @@ if submitted:
     new_row = pd.DataFrame([{
         "日付": str(match_date),
         "半荘": match_count,
-        "P1名": p1_name, "P1_Pt": p1_pt, "P1_チップ": p1_chip,
-        "P2名": p2_name, "P2_Pt": p2_pt, "P2_チップ": p2_chip,
-        "P3名": p3_name, "P3_Pt": p3_pt, "P3_チップ": p3_チップ,
+        "P1名": p1_name, "P1_Pt": p1_pt_val, "P1_チップ": p1_chip_val,
+        "P2名": p2_name, "P2_Pt": p2_pt_val, "P2_チップ": p2_chip_val,
+        "P3名": p3_name, "P3_Pt": p3_pt_val, "P3_チップ": p3_chip_val,
     }])
 
     # 既存データに追加して保存
