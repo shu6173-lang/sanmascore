@@ -174,7 +174,12 @@ with tab1:
         if key not in st.session_state:
             st.session_state[key] = default_val
 
-    # 自動調整ボタンが押されたときの処理（ウィジェット描画前にステートの値を書き換えてrerunする）
+    # 自動調整ボタンが押されたときの処理
+    if st.session_state.get("auto_calc_triggered", False):
+        st.session_state[val_p3_p] = st.session_state.get("temp_p3_p", 0.0)
+        st.session_state[val_p3_c] = st.session_state.get("temp_p3_c", 0)
+        st.session_state["auto_calc_triggered"] = False
+
     col1, col2, col3 = st.columns([2, 2, 2])
 
     with col1:
@@ -208,8 +213,9 @@ with tab1:
         st.warning(f"⚠️ 合計が 0 になっていません (ゲームPt合計: {total_pt:+.1f} / チップ合計: {total_chip:+d}枚)")
         
         if st.button("🪄 3人目の数値を自動調整して合計を0にする", use_container_width=True):
-            st.session_state[val_p3_p] = - (p1_pt + p2_pt)
-            st.session_state[val_p3_c] = - (p1_chip + p2_chip)
+            st.session_state["temp_p3_p"] = - (p1_pt + p2_pt)
+            st.session_state["temp_p3_c"] = - (p1_chip + p2_chip)
+            st.session_state["auto_calc_triggered"] = True
             st.rerun()
     else:
         st.success("✨ 合計が綺麗に 0 になっています！", icon="✅")
