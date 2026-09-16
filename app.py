@@ -167,71 +167,45 @@ with tab1:
         if c_key not in st.session_state:
             st.session_state[c_key] = 0
 
-    # コールバック関数（他の2人が両方とも0のときは勝手に計算しない）
-    def make_callback(changed_p_num, is_chip):
-        def callback():
-            target_type = "c" if is_chip else "p"
-            target_key = f"p{changed_p_num}_{target_type}_{date_str}_{game_idx}"
-            
-            others = [p for p in [1, 2, 3] if p != changed_p_num]
-            other1_key = f"p{others[0]}_{target_type}_{date_str}_{game_idx}"
-            other2_key = f"p{others[1]}_{target_type}_{date_str}_{game_idx}"
-            
-            val_other1 = st.session_state[other1_key]
-            val_other2 = st.session_state[other2_key]
-            
-            # 【重要】他の2人が両方とも0（または初期状態）のときは、勝手に自動計算させずにそのままにする
-            if val_other1 == 0 and val_other2 == 0:
-                return
-            
-            # それ以外（誰かがすでに数値を入力している状態）のときは、一番最後のプレイヤー（またはothers[1]）に帳尻を合わせる
-            adjust_p_num = 3 if 3 in others else others[1]
-            other_p_num = others[0] if others[0] != adjust_p_num else others[1]
-            
-            other_key = f"p{other_p_num}_{target_type}_{date_str}_{game_idx}"
-            adjust_key = f"p{adjust_p_num}_{target_type}_{date_str}_{game_idx}"
-            
-            val1 = st.session_state[target_key]
-            val2 = st.session_state[other_key]
-            
-            if is_chip:
-                st.session_state[adjust_key] = -int(val1 + val2)
-            else:
-                st.session_state[adjust_key] = -float(val1 + val2)
-                
-        return callback
-
-    # 入力フォームの描画
+    # 入力フォームの描画（3人とも完全に自由に手動入力・変更可能。勝手に書き換わることはありません）
     col1, col2, col3 = st.columns([2, 2, 2])
 
     with col1:
         st.markdown(f"**{p1_name}**")
-        p1_pt = st.number_input("ゲームPt", step=1.0, key=f"p1_p_{date_str}_{game_idx}", on_change=make_callback(1, False))
-        p1_chip = st.number_input("チップ枚数", step=1, key=f"p1_c_{date_str}_{game_idx}", on_change=make_callback(1, True))
+        p1_pt = st.number_input("ゲームPt", step=1.0, key=f"p1_p_{date_str}_{game_idx}")
+        p1_chip = st.number_input("チップ枚数", step=1, key=f"p1_c_{date_str}_{game_idx}")
 
     with col2:
         st.markdown(f"**{p2_name}**")
-        p2_pt = st.number_input("ゲームPt", step=1.0, key=f"p2_p_{date_str}_{game_idx}", on_change=make_callback(2, False))
-        p2_chip = st.number_input("チップ枚数", step=1, key=f"p2_c_{date_str}_{game_idx}", on_change=make_callback(2, True))
+        p2_pt = st.number_input("ゲームPt", step=1.0, key=f"p2_p_{date_str}_{game_idx}")
+        p2_chip = st.number_input("チップ枚数", step=1, key=f"p2_c_{date_str}_{game_idx}")
 
     with col3:
         st.markdown(f"**{p3_name}**")
-        p3_pt = st.number_input("ゲームPt", step=1.0, key=f"p3_p_{date_str}_{game_idx}", on_change=make_callback(3, False))
-        p3_chip = st.number_input("チップ枚数", step=1, key=f"p3_c_{date_str}_{game_idx}", on_change=make_callback(3, True))
+        p3_pt = st.number_input("ゲームPt", step=1.0, key=f"p3_p_{date_str}_{game_idx}")
+        p3_chip = st.number_input("チップ枚数", step=1, key=f"p3_c_{date_str}_{game_idx}")
 
-    # 合計値の確認表示
+    # 合計値の確認
     total_pt = p1_pt + p2_pt + p3_pt
     total_chip = p1_chip + p2_chip + p3_chip
 
     if total_pt != 0.0 or total_chip != 0:
         st.warning(f"⚠️ 合計が 0 になっていません (ゲームPt合計: {total_pt:+.1f} / チップ合計: {total_chip:+d}枚)")
+        
+        # 3人目をワンクリックで自動調整して0にする便利ボタン
+        if st.button("🪄 3人目の数値を自動調整して合計を0にする", use_container_width=True):
+            st.session_state[f"p3_p_{date_str}_{game_idx}"] = - (p1_pt + p2_pt)
+            st.session_state[f"p3_c_{date_str}_{game_idx}"] = - (p1_chip + p2_chip)
+            st.rerun()
     else:
-        st.success("✨ バランスOK（ゲームPt・チップの合計が正常に0になっています）", icon="✅")
+        st.success("✨ 合計が綺麗に 0 になっています！", icon="✅")
+
+    st.markdown("---")
 
     # 結果の追加ボタン
     if st.button("➕ この半荘の結果を記録する", type="primary", use_container_width=True):
         if total_pt != 0.0 or total_chip != 0:
-            st.error("エラー：ゲームPtとチップの合計がそれぞれ0になるように調整してください。")
+            st.error("エラー：ゲームPtとチップの合計がそれぞれ0になるように調整してください。（上の自動調整ボタンも使えます）")
         else:
             record = {
                 "日付": date_str,
