@@ -46,14 +46,14 @@ def load_data():
         columns = ["日付", "半荘", "P1名", "P1_Pt", "P1_チップ", "P2名", "P2_Pt", "P2_チップ", "P3名", "P3_Pt", "P3_チップ"]
         return pd.DataFrame(columns=columns)
 
-# 3. データをスプレッドシートに追記する関数（上書きではなく追加）
+# 3. データをスプレッドシートに追記する関数
 def append_data(row_list):
     client = get_gspread_client()
     sheet_id = st.secrets["spreadsheet"]["spreadsheet_id"]
     sheet = client.open_by_key(sheet_id).worksheet("Sheet1")
     sheet.append_row(row_list)
 
-# 4. データを全リセット（初期化）する関数
+# 4. データを全リセットする関数
 def reset_data():
     client = get_gspread_client()
     sheet_id = st.secrets["spreadsheet"]["spreadsheet_id"]
@@ -76,7 +76,19 @@ df = load_data()
 next_match_num = len(df) + 1
 default_match_text = f"{next_match_num}回戦"
 
-# サイドバー：対局結果の入力
+# ==========================================
+# サイドバー：日付選択メニュー ＆ 対局結果の入力
+# ==========================================
+st.sidebar.header("📅 過去の記録フィルター")
+
+selected_date_filter = "すべて表示"
+if not df.empty and "日付" in df.columns:
+    # 記録されている日付の一覧を取得（重複なし、新しい順など）
+    recorded_dates = sorted(df["日付"].dropna().unique(), reverse=True)
+    date_options = ["すべて表示"] + list(recorded_dates)
+    selected_date_filter = st.sidebar.selectbox("表示する日付を選択", date_options)
+
+st.sidebar.markdown("---")
 st.sidebar.header("📝 対局結果の入力")
 
 with st.sidebar.form("score_form"):
@@ -101,18 +113,13 @@ with st.sidebar.form("score_form"):
     submitted = st.form_submit_button("計算して記録する")
 
 if submitted:
-    # スプレッドシートに追加する行データ（リスト形式）
     row_data = [
         str(match_date), match_count,
         p1_name, str(p1_pt_val), str(p1_chip_val),
         p2_name, str(p2_pt_val), str(p2_chip_val),
         p3_name, str(p3_pt_val), str(p3_chip_val)
     ]
-    
-    # データを追記
     append_data(row_data)
-    
-    # キャッシュをクリアして再読み込み
     st.cache_data.clear()
     st.sidebar.success("スプレッドシートに保存しました！")
     st.rerun()
@@ -122,11 +129,15 @@ if submitted:
 # ==========================================
 
 if not df.empty:
-    # プレイヤーごとの集計処理
+    # 選択された日付で絞り込み（「すべて表示」でなければその日付のデータだけにする）
+    display_df = df.copy()
+    if selected_date_filter != "すべて表示":
+        display_df = display_df[display_df["日付"] == selected_date_filter]
+
+    # プレイヤーごとの集計処理（※トータルは全期間、または絞り込み時に合算するかはお好みですが、全期間の総合を出すか選んだ日だけにすることも可能です。今回は全体の総合成績を表示しつつ、履歴を絞り込めるようにしています）
     summary_dict = {}
     
     for _, row in df.iterrows():
-        # 各行から 3人分の名前・Pt・チップを取り出す
         players_in_row = [
             (row.get("P1名"), row.get("P1_Pt"), row.get("P1_チップ")),
             (row.get("P2名"), row.get("P2_Pt"), row.get("P2_チップ")),
@@ -138,7 +149,6 @@ if not df.empty:
                 continue
             name = str(name).strip()
             
-            # 数値に変換（空文字やエラー対策）
             try:
                 pt_val = float(pt) if pt != "" else 0.0
             except:
@@ -156,7 +166,6 @@ if not df.empty:
             summary_dict[name]["トータルPt"] += pt_val
             summary_dict[name]["トータルチップ"] += chip_val
 
-    # 集計結果をデータフレームに変換
     summary_data = []
     for name, stats in summary_dict.items():
         summary_data.append({
@@ -167,14 +176,18 @@ if not df.empty:
         })
         
     if summary_data:
-        st.header("🏆 総合成績サマリー")
+        st.header("🏆 総合成績サマリー（全期間）")
         summary_df = pd.DataFrame(summary_data)
-        # ポイント順に並び替え
         summary_df = summary_df.sort_values(by="トータルPt", ascending=False).reset_index(drop=True)
         st.dataframe(summary_df, use_container_width=True)
 
-    st.header("📊 対局履歴一覧")
-    st.dataframe(df, use_container_width=True)
+    # 履歴一覧（選択した日付でフィルターされたもの）
+    if selected_date_filter == "すべて表示":
+        st.header("📊 対局履歴一覧（すべて）")
+    else:
+        st.header(f"📊 対局履歴一覧 ({selected_date_filter})")
+        
+    st.dataframe(display_df, use_container_width=True)
     
     st.markdown("---")
     if st.button("全データをリセット（注意）"):
