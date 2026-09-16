@@ -29,7 +29,6 @@ else:
 
 # カレンダーで直接指定
 if selected_saved_date != "-- カレンダー指定 --":
-    # 選択肢の文字列（例: "🀄 2026-09-17 (3半荘)"）から日付を取り出す
     raw_date_str = selected_saved_date.split(" ")[1]
     default_date = datetime.datetime.strptime(raw_date_str, "%Y-%m-%d").date()
 else:
@@ -60,7 +59,6 @@ if st.sidebar.button(f"🗑️ {date_str} のデータをリセット", type="se
     st.rerun()
 
 # --- 2. 今回の対局結果の入力 ---
-# 記録がある日の印を表示
 has_records_icon = " 📌(記録あり)" if len(current_history) > 0 else ""
 st.subheader(f"📝 {date_str}{has_records_icon} ｜ 第 {len(current_history) + 1} 半荘の入力")
 
@@ -141,7 +139,7 @@ if current_history:
     st.markdown("---")
     st.subheader(f"📊 【{date_str}】の総合計スコア")
 
-    # 集計処理
+    # 正しい集計処理（各プレイヤーのゲームPtとチップ枚数）
     players_data = [
         {
             "name": p1_name,
@@ -151,7 +149,7 @@ if current_history:
         {
             "name": p2_name,
             "game_pt": sum(r[p2_name] for r in current_history),
-            "chip_count": sum(r["_p3_chip"] for r in current_history) if p3_name == p["name"] else sum(r["_p2_chip"] for r in current_history),
+            "chip_count": sum(r["_p2_chip"] for r in current_history),
         },
         {
             "name": p3_name,
@@ -159,11 +157,6 @@ if current_history:
             "chip_count": sum(r["_p3_chip"] for r in current_history),
         },
     ]
-
-    # 正しいインデックスでの集計補正
-    players_data[0]["chip_count"] = sum(r["_p1_chip"] for r in current_history)
-    players_data[1]["chip_count"] = sum(r["_p2_chip"] for r in current_history)
-    players_data[2]["chip_count"] = sum(r["_p3_chip"] for r in current_history)
 
     for p in players_data:
         p["chip_pt"] = p["chip_count"] * chip_rate
