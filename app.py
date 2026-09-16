@@ -41,28 +41,26 @@ def load_data():
             return pd.DataFrame(columns=columns)
             
         df = pd.DataFrame(data[1:], columns=columns[:len(data[0])])
-        
-        # 数値データの型変換（Ptとチップを数値に直す）
-        for col in ["P1_Pt", "P1_チップ", "P2_Pt", "P2_チップ", "P3_Pt", "P3_チップ"]:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors="fillna").fillna(0.0)
-                
         return df.dropna(how="all")
     except Exception as e:
         columns = ["日付", "半荘", "P1名", "P1_Pt", "P1_チップ", "P2名", "P2_Pt", "P2_チップ", "P3名", "P3_Pt", "P3_チップ"]
         return pd.DataFrame(columns=columns)
 
-# 3. データをスプレッドシートに保存する関数
-def save_data(df):
+# 3. データをスプレッドシートに追記する関数（上書きではなく追加）
+def append_data(row_list):
     client = get_gspread_client()
     sheet_id = st.secrets["spreadsheet"]["spreadsheet_id"]
     sheet = client.open_by_key(sheet_id).worksheet("Sheet1")
-    
+    sheet.append_row(row_list)
+
+# 4. データを全リセット（初期化）する関数
+def reset_data():
+    client = get_gspread_client()
+    sheet_id = st.secrets["spreadsheet"]["spreadsheet_id"]
+    sheet = client.open_by_key(sheet_id).worksheet("Sheet1")
     columns = ["日付", "半荘", "P1名", "P1_Pt", "P1_チップ", "P2名", "P2_Pt", "P2_チップ", "P3名", "P3_Pt", "P3_チップ"]
     sheet.clear()
     sheet.append_row(columns)
-    for _, row in df.iterrows():
-        sheet.append_row([str(val) for val in row.tolist()])
 
 
 # ==========================================
@@ -103,17 +101,19 @@ with st.sidebar.form("score_form"):
     submitted = st.form_submit_button("計算して記録する")
 
 if submitted:
-    new_row = pd.DataFrame([{
-        "日付": str(match_date),
-        "半荘": match_count,
-        "P1名": p1_name, "P1_Pt": float(p1_pt_val), "P1_チップ": int(p1_chip_val),
-        "P2名": p2_name, "P2_Pt": float(p2_pt_val), "P2_チップ": int(p2_chip_val),
-        "P3名": p3_name, "P3_Pt": float(p3_pt_val), "P3_チップ": int(p3_chip_val),
-    }])
-
-    df = pd.concat([df, new_row], ignore_index=True)
-    save_data(df)
+    # スプレッドシートに追加する行データ（リスト形式）
+    row_data = [
+        str(match_date), match_count,
+        p1_name, str(p1_pt_val), str(p1_chip_val),
+        p2_name, str(p2_pt_val), str(p2_chip_val),
+        p3_name, str(p3_pt_val), str(p3_chip_val)
+    ]
     
+    # データを追記
+    append_data(row_data)
+    
+    # キャッシュをクリアして再読み込み
+    st.cache_data.clear()
     st.sidebar.success("スプレッドシートに保存しました！")
     st.rerun()
 
@@ -123,31 +123,47 @@ if submitted:
 
 if not df.empty:
     # プレイヤーごとの集計処理
+    summary_dict = {}
+    
+    for _, row in df.iterrows():
+        # 各行から 3人分の名前・Pt・チップを取り出す
+        players_in_row = [
+            (row.get("P1名"), row.get("P1_Pt"), row.get("P1_チップ")),
+            (row.get("P2名"), row.get("P2_Pt"), row.get("P2_チップ")),
+            (row.get("P3名"), row.get("P3_Pt"), row.get("P3_チップ")),
+        ]
+        
+        for name, pt, chip in players_in_row:
+            if not name or str(name).strip() == "":
+                continue
+            name = str(name).strip()
+            
+            # 数値に変換（空文字やエラー対策）
+            try:
+                pt_val = float(pt) if pt != "" else 0.0
+            except:
+                pt_val = 0.0
+                
+            try:
+                chip_val = int(float(chip)) if chip != "" else 0
+            except:
+                chip_val = 0
+                
+            if name not in summary_dict:
+                summary_dict[name] = {"半荘数": 0, "トータルPt": 0.0, "トータルチップ": 0}
+                
+            summary_dict[name]["半荘数"] += 1
+            summary_dict[name]["トータルPt"] += pt_val
+            summary_dict[name]["トータルチップ"] += chip_val
+
+    # 集計結果をデータフレームに変換
     summary_data = []
-    # データフレームからすべてのプレイヤー名を集める
-    all_players = set()
-    for i in range(1, 4):
-        all_players.update(df[f"P{i}name"].dropna().unique())
-        
-    for player in all_players:
-        if not player or player.strip() == "":
-            continue
-        total_pt = 0.0
-        total_chip = 0
-        matches_played = 0
-        
-        for _, row in df.iterrows():
-            for i in range(1, 4):
-                if row.get(f"P{i}name") == player:
-                    total_pt += float(row.get(f"P{i}_Pt", 0))
-                    total_chip += int(row.get(f"P{i}_チップ", 0))
-                    matches_played += 1
-                    
+    for name, stats in summary_dict.items():
         summary_data.append({
-            "プレイヤー名": player,
-            "半荘数": matches_played,
-            "トータルPt": round(total_pt, 1),
-            "トータルチップ": total_chip
+            "プレイヤー名": name,
+            "半荘数": stats["半荘数"],
+            "トータルPt": round(stats["トータルPt"], 1),
+            "トータルチップ": stats["トータルチップ"]
         })
         
     if summary_data:
@@ -162,9 +178,8 @@ if not df.empty:
     
     st.markdown("---")
     if st.button("全データをリセット（注意）"):
-        columns = ["日付", "半荘", "P1名", "P1_Pt", "P1_チップ", "P2名", "P2_Pt", "P2_チップ", "P3名", "P3_Pt", "P3_チップ"]
-        empty_df = pd.DataFrame(columns=columns)
-        save_data(empty_df)
+        reset_data()
+        st.cache_data.clear()
         st.success("データをリセットしました。")
         st.rerun()
 else:
