@@ -159,31 +159,39 @@ with tab1:
     game_idx = len(current_history)
     
     # セッションステートの初期化
-    for p_num in [1, 2, 3]:
-        p_key = f"p{p_num}_p_{date_str}_{game_idx}"
-        c_key = f"p{p_num}_c_{date_str}_{game_idx}"
-        if p_key not in st.session_state:
-            st.session_state[p_key] = 0.0
-        if c_key not in st.session_state:
-            st.session_state[c_key] = 0
+    p1_p_key = f"p1_p_{date_str}_{game_idx}"
+    p1_c_key = f"p1_c_{date_str}_{game_idx}"
+    p2_p_key = f"p2_p_{date_str}_{game_idx}"
+    p2_c_key = f"p2_c_{date_str}_{game_idx}"
+    p3_p_key = f"p3_p_{date_str}_{game_idx}"
+    p3_c_key = f"p3_c_{date_str}_{game_idx}"
 
-    # 入力フォームの描画（session_stateをvalueとしてバインド）
+    for key, default_val in [
+        (p1_p_key, 0.0), (p1_c_key, 0),
+        (p2_p_key, 0.0), (p2_c_key, 0),
+        (p3_p_key, 0.0), (p3_c_key, 0)
+    ]:
+        if key not in st.session_state:
+            st.session_state[key] = default_val
+
+    # 自動調整ボタンが押されたときの処理（ウィジェット描画前にセッションステートを書き換えてrerunする）
+    # ※ ボタンをフォームや入力欄より上に置くことで、ウィジェット生成前の安全なタイミングで値を更新できます
     col1, col2, col3 = st.columns([2, 2, 2])
 
     with col1:
         st.markdown(f"**{p1_name}**")
-        p1_pt = st.number_input("ゲームPt", step=1.0, key=f"p1_p_{date_str}_{game_idx}")
-        p1_chip = st.number_input("チップ枚数", step=1, key=f"p1_c_{date_str}_{game_idx}")
+        p1_pt = st.number_input("ゲームPt", step=1.0, key=p1_p_key)
+        p1_chip = st.number_input("チップ枚数", step=1, key=p1_c_key)
 
     with col2:
         st.markdown(f"**{p2_name}**")
-        p2_pt = st.number_input("ゲームPt", step=1.0, key=f"p2_p_{date_str}_{game_idx}")
-        p2_chip = st.number_input("チップ枚数", step=1, key=f"p2_c_{date_str}_{game_idx}")
+        p2_pt = st.number_input("ゲームPt", step=1.0, key=p2_p_key)
+        p2_chip = st.number_input("チップ枚数", step=1, key=p2_c_key)
 
     with col3:
         st.markdown(f"**{p3_name}**")
-        p3_pt = st.number_input("ゲームPt", step=1.0, key=f"p3_p_{date_str}_{game_idx}")
-        p3_chip = st.number_input("チップ枚数", step=1, key=f"p3_c_{date_str}_{game_idx}")
+        p3_pt = st.number_input("ゲームPt", step=1.0, key=p3_p_key)
+        p3_chip = st.number_input("チップ枚数", step=1, key=p3_c_key)
 
     # 合計値の確認
     total_pt = p1_pt + p2_pt + p3_pt
@@ -192,10 +200,9 @@ with tab1:
     if total_pt != 0.0 or total_chip != 0:
         st.warning(f"⚠️ 合計が 0 になっていません (ゲームPt合計: {total_pt:+.1f} / チップ合計: {total_chip:+d}枚)")
         
-        # 3人目をワンクリックで自動調整して0にするボタン
         if st.button("🪄 3人目の数値を自動調整して合計を0にする", use_container_width=True):
-            st.session_state[f"p3_p_{date_str}_{game_idx}"] = - (p1_pt + p2_pt)
-            st.session_state[f"p3_c_{date_str}_{game_idx}"] = - (p1_chip + p2_chip)
+            st.session_state[p3_p_key] = - (p1_pt + p2_pt)
+            st.session_state[p3_c_key] = - (p1_chip + p2_chip)
             st.rerun()
     else:
         st.success("✨ 合計が綺麗に 0 になっています！", icon="✅")
