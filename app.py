@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from google.oauth2.service_account import Credentials
 import gspread
+import toml
 
 # ページの設定
 st.set_page_config(
@@ -10,12 +11,18 @@ st.set_page_config(
     layout="centered"
 )
 
-# Googleスプレッドシートに接続する関数（秘密鍵の改行エラー対策版）
+# Googleスプレッドシートに接続する関数（安全・確実な認証方式）
 def get_gspread_client():
+    # StreamlitのSecretsから辞書として直接安全に取得
     creds_dict = dict(st.secrets["gcp_service_account"])
+    
+    # 秘密鍵の改行エスケープ（\\n を実際の改行に直す）を確実に行う
     if "private_key" in creds_dict:
-        creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
-        
+        pk = creds_dict["private_key"]
+        # リテラル文字の "\\n" または実際の "\n" を正しい形式に統一
+        pk = pk.replace("\\\\n", "\n").replace("\\n", "\n")
+        creds_dict["private_key"] = pk
+
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
