@@ -121,12 +121,15 @@ if st.button(
     record = {
         "日付": date_str,
         "半荘": f"第{len(current_history) + 1}半荘",
-        "_p1_pt": p1_pt,
-        "_p2_pt": p2_pt,
-        "_p3_pt": p3_pt,
-        "_p1_chip": p1_chip,
-        "_p2_chip": p2_chip,
-        "_p3_chip": p3_chip,
+        "p1_name": p1_name,
+        "p2_name": p2_name,
+        "p3_name": p3_name,
+        "p1_pt": p1_pt,
+        "p2_pt": p2_pt,
+        "p3_pt": p3_pt,
+        "p1_chip": p1_chip,
+        "p2_chip": p2_chip,
+        "p3_chip": p3_chip,
     }
     current_history.append(record)
     st.success(
@@ -139,36 +142,51 @@ if current_history:
     st.markdown("---")
     st.subheader(f"📊 【{date_str}】の総合計スコア")
 
-    # 集計処理（位置インデックスで計算するため名前変更に影響されない）
-    players_data = [
-        {
-            "name": p1_name,
-            "game_pt": sum(r["_p1_pt"] for r in current_history),
-            "chip_count": sum(r["_p1_chip"] for r in current_history),
-        },
-        {
-            "name": p2_name,
-            "game_pt": sum(r["_p2_pt"] for r in current_history),
-            "chip_count": sum(r["_p2_chip"] for r in current_history),
-        },
-        {
-            "name": p3_name,
-            "game_pt": sum(r["_p3_pt"] for r in current_history),
-            "chip_count": sum(r["_p3_chip"] for r in current_history),
-        },
-    ]
+    # プレイヤーごとに名前別に集計（同日内に途中交代・改名があっても名前単位で計算）
+    players_summary = {}
 
-    for p in players_data:
-        p["chip_pt"] = p["chip_count"] * chip_rate
-        p["total_pt"] = p["game_pt"] + p["chip_pt"]
+    for r in current_history:
+        # P1
+        p1 = r["p1_name"]
+        if p1 not in players_summary:
+            players_summary[p1] = {"game_pt": 0.0, "chip_count": 0}
+        players_summary[p1]["game_pt"] += r["p1_pt"]
+        players_summary[p1]["chip_count"] += r["p1_chip"]
+
+        # P2
+        p2 = r["p2_name"]
+        if p2 not in players_summary:
+            players_summary[p2] = {"game_pt": 0.0, "chip_count": 0}
+        players_summary[p2]["game_pt"] += r["p2_pt"]
+        players_summary[p2]["chip_count"] += r["p2_chip"]
+
+        # P3
+        p3 = r["p3_name"]
+        if p3 not in players_summary:
+            players_summary[p3] = {"game_pt": 0.0, "chip_count": 0}
+        players_summary[p3]["game_pt"] += r["p3_pt"]
+        players_summary[p3]["chip_count"] += r["p3_chip"]
+
+    players_data = []
+    for name, data in players_summary.items():
+        chip_pt = data["chip_count"] * chip_rate
+        total_pt = data["game_pt"] + chip_pt
+        players_data.append({
+            "name": name,
+            "game_pt": data["game_pt"],
+            "chip_count": data["chip_count"],
+            "chip_pt": chip_pt,
+            "total_pt": total_pt,
+        })
 
     # 総合計順に並び替え
     players_data.sort(key=lambda x: x["total_pt"], reverse=True)
 
     # カード形式で表示
-    cols = st.columns(3)
+    cols = st.columns(min(len(players_data), 3))
     for idx, p in enumerate(players_data):
-        with cols[idx]:
+        col_idx = idx % len(cols)
+        with cols[col_idx]:
             st.metric(
                 label=f"🏆 {idx+1}位 : {p['name']}",
                 value=f"{p['total_pt']:+.1f} pt",
@@ -179,16 +197,16 @@ if current_history:
                 f"🪙 **チップPt:** {p['chip_pt']:+.1f} pt ({p['chip_count']}枚)"
             )
 
-    # 履歴テーブル表示用データ構築（現在の最新プレイヤー名を使用）
+    # 履歴テーブル表示用データ構築（その半荘記録時の名前をそのまま表示）
     st.subheader(f"📜 【{date_str}】の対局履歴")
     table_data = []
     for r in current_history:
         row = {
             "日付": r["日付"],
             "半荘": r["半荘"],
-            p1_name: r["_p1_pt"],
-            p2_name: r["_p2_pt"],
-            p3_name: r["_p3_pt"],
+            f"{r['p1_name']} (Pt)": r["p1_pt"],
+            f"{r['p2_name']} (Pt)": r["p2_pt"],
+            f"{r['p3_name']} (Pt)": r["p3_pt"],
         }
         table_data.append(row)
 
@@ -217,9 +235,15 @@ for d, recs in st.session_state.history_by_date.items():
         all_table_data.append({
             "日付": r["日付"],
             "半荘": r["半荘"],
-            p1_name: r["_p1_pt"],
-            p2_name: r["_p2_pt"],
-            p3_name: r["_p3_pt"],
+            "P1名": r["p1_name"],
+            "P1_Pt": r["p1_pt"],
+            "P1_チップ": r["p1_chip"],
+            "P2名": r["p2_name"],
+            "P2_Pt": r["p2_pt"],
+            "P2_チップ": r["p2_chip"],
+            "P3名": r["p3_name"],
+            "P3_Pt": r["p3_pt"],
+            "P3_チップ": r["p3_chip"],
         })
 
 if all_table_data:
