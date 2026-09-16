@@ -1,3 +1,4 @@
+import datetime
 import pandas as pd
 import streamlit as st
 
@@ -26,6 +27,9 @@ if st.sidebar.button("🗑️ データを全リセット", type="secondary"):
 
 # --- 2. 今回の対局結果の入力 ---
 st.subheader(f"📝 第 {len(st.session_state.history) + 1} 半荘の入力")
+
+# 日付選択
+play_date = st.date_input("対局日", datetime.date.today())
 
 col1, col2, col3 = st.columns([2, 2, 2])
 
@@ -84,6 +88,7 @@ if st.button(
     "➕ この半荘の結果を記録する", type="primary", use_container_width=True
 ):
     record = {
+        "日付": play_date.strftime("%Y-%m-%d"),
         "半荘": f"第{len(st.session_state.history) + 1}半荘",
         f"{p1_name}": p1_pt,
         f"{p2_name}": p2_pt,
@@ -143,10 +148,10 @@ if st.session_state.history:
                 f"🪙 **チップPt:** {p['chip_pt']:+.1f} pt ({p['chip_count']}枚)"
             )
 
-    # 履歴テーブル（ゲームPtのみ表示）
+    # 履歴テーブル（日付・半荘・各人ゲームPtを表示）
     st.subheader("📜 対局履歴")
     df = pd.DataFrame(st.session_state.history)
-    display_df = df[["半荘", p1_name, p2_name, p3_name]]
+    display_df = df[["日付", "半荘", p1_name, p2_name, p3_name]]
     st.dataframe(display_df, use_container_width=True)
 
     # 1件削除機能
