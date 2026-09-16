@@ -187,7 +187,7 @@ tab1, tab2, tab3 = st.tabs(["📝 スコア入力・当日結果", "🏆 通算�
 with tab1:
     has_records_icon = " 📌(記録あり)" if len(current_history) > 0 else ""
     st.subheader(f"📝 {date_str}{has_records_icon} ｜ 第 {len(current_history) + 1} 半荘の入力")
-    st.caption("💡 どのプレイヤーからでも自由に入力できます。最後に残った（空欄のままの）1人の数値は、合計が0になるように自動で計算されます！")
+    st.caption("💡 どのプレイヤーからでも自由に入力できます。")
 
     col1, col2, col3 = st.columns([2, 2, 2])
 
@@ -206,38 +206,11 @@ with tab1:
         p3_pt = st.number_input(f"ゲームPt", value=0.0, step=1.0, key=f"p3_p_{date_str}_{len(current_history)}")
         p3_chip = st.number_input(f"チップ枚数", value=0, step=1, key=f"p3_c_{date_str}_{len(current_history)}")
 
-    # --- どのプレイヤーを自動計算にするかを自動判定 ---
-    # ユーザーが自由に触れるようにしつつ、もし2人分が入力されていて1人が0のままであれば（あるいは最後に調整が必要なら）
-    # 三麻のルール上、ゲームPtの合計は 0 になるべきなので、
-    # 例えば P1 と P2 が入力されたら P3 を自動計算、のように柔軟に補正するか、
-    # あるいは「最後に変更された入力欄以外の残り1人」を自動計算にするのが理想です。
-    
-    # ここでは一番シンプルに、「もし合計が0になっていない場合、最後に触っていない欄、もしくは3人目を自動調整する」ではなく、
-    # 「プレイヤー1と2をベースに3人目を自動計算、ただし3人目を直接いじった場合は他を調整」という挙動から一歩進めて、
-    # 「誰かが0のままであれば、残りの2人から自動計算する」ようにします。
-    # ※ もし全員の数値を自分で完全に入力したい場合にも対応できるよう、自動計算された数値はプレビュー表示されます。
-
-    # 自動補正ロジック：
-    # もしP1とP2が入力されていてP3が0のままであればP3を自動計算。
-    # どの順番でも柔軟に動くよう、入力された2人から残り1人を自動的に導き出します。
-    
-    # セッションステートを使って「最後にどこが変更されたか」を追うか、
-    # あるいはシンプルに「P3を自動計算枠」とするのが一番バグが起きにくいのですが、
-    # 「どの人からでも」というご要望なので、例えば **「3人の数値の合計が合っていない場合、自動で余りを調整する」** 欄をリアルタイム表示させます。
-
-    calc_p1_pt = p1_pt
-    calc_p1_chip = p1_chip
-    calc_p2_pt = p2_pt
-    calc_p2_chip = p2_chip
-    calc_p3_pt = p3_pt
-    calc_p3_chip = p3_chip
-
-    # 合計チェックと自動バランス調整の案内
     total_pt = p1_pt + p2_pt + p3_pt
     total_chip = p1_chip + p2_chip + p3_chip
 
     if total_pt != 0.0 or total_chip != 0:
-        st.info(現在のゲームPt合計: {total_pt:+.1f}pt ／ チップ合計: {total_chip:+d}枚)
+        st.info(f"現在のゲームPt合計: {total_pt:+.1f}pt ／ チップ合計: {total_chip:+d}枚")
 
     # 結果の追加ボタン
     if st.button("➕ この半荘の結果を記録する", type="primary", use_container_width=True):
