@@ -121,9 +121,9 @@ if st.button(
     record = {
         "日付": date_str,
         "半荘": f"第{len(current_history) + 1}半荘",
-        f"{p1_name}": p1_pt,
-        f"{p2_name}": p2_pt,
-        f"{p3_name}": p3_pt,
+        "_p1_pt": p1_pt,
+        "_p2_pt": p2_pt,
+        "_p3_pt": p3_pt,
         "_p1_chip": p1_chip,
         "_p2_chip": p2_chip,
         "_p3_chip": p3_chip,
@@ -139,21 +139,21 @@ if current_history:
     st.markdown("---")
     st.subheader(f"📊 【{date_str}】の総合計スコア")
 
-    # 正しい集計処理（各プレイヤーのゲームPtとチップ枚数）
+    # 集計処理（位置インデックスで計算するため名前変更に影響されない）
     players_data = [
         {
             "name": p1_name,
-            "game_pt": sum(r[p1_name] for r in current_history),
+            "game_pt": sum(r["_p1_pt"] for r in current_history),
             "chip_count": sum(r["_p1_chip"] for r in current_history),
         },
         {
             "name": p2_name,
-            "game_pt": sum(r[p2_name] for r in current_history),
+            "game_pt": sum(r["_p2_pt"] for r in current_history),
             "chip_count": sum(r["_p2_chip"] for r in current_history),
         },
         {
             "name": p3_name,
-            "game_pt": sum(r[p3_name] for r in current_history),
+            "game_pt": sum(r["_p3_pt"] for r in current_history),
             "chip_count": sum(r["_p3_chip"] for r in current_history),
         },
     ]
@@ -179,10 +179,20 @@ if current_history:
                 f"🪙 **チップPt:** {p['chip_pt']:+.1f} pt ({p['chip_count']}枚)"
             )
 
-    # 履歴テーブル（日付・半荘・各人ゲームPt）
+    # 履歴テーブル表示用データ構築（現在の最新プレイヤー名を使用）
     st.subheader(f"📜 【{date_str}】の対局履歴")
-    df = pd.DataFrame(current_history)
-    display_df = df[["日付", "半荘", p1_name, p2_name, p3_name]]
+    table_data = []
+    for r in current_history:
+        row = {
+            "日付": r["日付"],
+            "半荘": r["半荘"],
+            p1_name: r["_p1_pt"],
+            p2_name: r["_p2_pt"],
+            p3_name: r["_p3_pt"],
+        }
+        table_data.append(row)
+
+    display_df = pd.DataFrame(table_data)
     st.dataframe(display_df, use_container_width=True)
 
     # 1件削除機能
@@ -201,17 +211,22 @@ if current_history:
     )
 
 # --- 5. 全日程の統合CSV保存機能 ---
-all_records = []
+all_table_data = []
 for d, recs in st.session_state.history_by_date.items():
-    all_records.extend(recs)
+    for r in recs:
+        all_table_data.append({
+            "日付": r["日付"],
+            "半荘": r["半荘"],
+            p1_name: r["_p1_pt"],
+            p2_name: r["_p2_pt"],
+            p3_name: r["_p3_pt"],
+        })
 
-if all_records:
+if all_table_data:
     st.markdown("---")
     st.caption("全日程のまとめ出力")
-    all_df = pd.DataFrame(all_records)
-    cols_to_show = ["日付", "半荘"] + [c for c in all_df.columns if not c.startswith("_") and c not in ["日付", "半荘"]]
-    all_display_df = all_df[cols_to_show]
-    csv_all = all_display_df.to_csv(index=False).encode("utf-8-sig")
+    all_df = pd.DataFrame(all_table_data)
+    csv_all = all_df.to_csv(index=False).encode("utf-8-sig")
     st.download_button(
         label="📦 これまでの全対局データ（全日程）を一括CSVダウンロード",
         data=csv_all,
