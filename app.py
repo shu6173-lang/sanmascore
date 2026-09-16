@@ -46,7 +46,9 @@ current_history = st.session_state.history_by_date[date_str]
 # ルールと名前設定
 st.sidebar.markdown("---")
 st.sidebar.header("⚙️ ルール設定")
-chip_rate = st.sidebar.number_input("チップ1枚あたりのpt", value=1.0, step=0.5)
+
+# ⭐ デフォルト値を 2.0 に設定
+chip_rate = st.sidebar.number_input("チップ1枚あたりのpt", value=2.0, step=0.5)
 
 st.sidebar.subheader("👤 プレイヤー名")
 p1_name = st.sidebar.text_input("プレイヤー1", "Aさん")
