@@ -12,19 +12,20 @@ st.set_page_config(
 # Google Sheets Connection の初期化
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# スプレッドシートからデータを読み込む（キャッシュをせず常に最新を取得）
+# スプレッドシートからデータを読み込む（A〜K列の11列）
 @st.cache_data(ttl=0)
 def load_data():
     try:
-        # スプレッドシートの1枚目のシートからデータを読み込み
-        df = conn.read(worksheet="Sheet1", usecols=list(range(5)), ttl=0)
-        # もしデータが空か、すべてNaNの場合は空のDataFrameを返す
+        df = conn.read(worksheet="Sheet1", usecols=list(range(11)), ttl=0)
+        columns = ["日付", "半荘", "P1名", "P1_Pt", "P1_チップ", "P2名", "P2_Pt", "P2_チップ", "P3名", "P3_Pt", "P3_チップ"]
         if df.empty or df.dropna(how="all").empty:
-            return pd.DataFrame(columns=["日付", "プレイヤー", "スコア", "チップ", "収支"])
+            return pd.DataFrame(columns=columns)
+        # 列名がズレないように整える
+        df.columns = columns[:len(df.columns)]
         return df.dropna(how="all")
     except Exception as e:
-        # 初回などでシートが空の場合などのフォールバック
-        return pd.DataFrame(columns=["日付", "プレイヤー", "スコア", "チップ", "収支"])
+        columns = ["日付", "半荘", "P1名", "P1_Pt", "P1_チップ", "P2名", "P2_Pt", "P2_チップ", "P3名", "P3_Pt", "P3_チップ"]
+        return pd.DataFrame(columns=columns)
 
 # データの保存関数
 def save_data(df):
@@ -41,6 +42,7 @@ st.sidebar.header("📝 対局結果の入力")
 
 with st.sidebar.form("score_form"):
     match_date = st.date_input("対局日")
+    match_count = st.text_input("半荘（例: 1回戦）", "1回戦")
     
     # 3人分のプレイヤー名とスコア・チップの入力
     st.subheader("プレイヤー1")
@@ -61,59 +63,43 @@ with st.sidebar.form("score_form"):
     # 設定（レートやウマなど）
     st.subheader("⚙️ ルール設定")
     return_score = st.number_input("返し点（基準点）", value=40000, step=1000)
-    uma_1 = st.number_input("ウマ 1位 (例: +20)", value=20, step=5)
-    uma_2 = st.number_input("ウマ 2位 (例: 0)", value=0, step=5)
-    uma_3 = st.number_input("ウマ 3位 (例: -20)", value=-20, step=5)
-    chip_rate = st.number_input("チップ1枚の価値 (円)", value=100, step=50)
+    uma_1 = st.number_input("ウマ 1位", value=20, step=5)
+    uma_2 = st.number_input("ウマ 2位", value=0, step=5)
+    uma_3 = st.number_input("ウマ 3位", value=-20, step=5)
 
     submitted = st.form_submit_button("計算して記録する")
 
 if submitted:
-    # バリデーション：合計点数が合っているかチェック（サンマの標準的な返し点×3などのチェック、簡易版）
-    total_score = p1_score + p2_score + p3_score
-    
     # スコアの計算（(持ち点 - 返し点) / 1000 + ウマ）
-    # サンマの場合、沈みウマやオカの計算ルールに合わせて算出
-    # ここでは一般的な計算ロジックを適用
-    p1_calc = ((p1_score - return_score) / 1000) + uma_1
-    p2_calc = ((p2_score - return_score) / 1000) + uma_2
-    p3_calc = ((p3_score - return_score) / 1000) + uma_3
+    p1_pt = ((p1_score - return_score) / 1000) + uma_1
+    p2_pt = ((p2_score - return_score) / 1000) + uma_2
+    p3_pt = ((p3_score - return_score) / 1000) + uma_3
 
-    # チップ収支の計算
-    p1_chip_yen = p1_chip * chip_rate
-    p2_chip_yen = p2_chip * chip_rate
-    p3_chip_yen = p3_chip * chip_rate
+    # 1行分のデータを作成
+    new_row = pd.DataFrame([{
+        "日付": str(match_date),
+        "半荘": match_count,
+        "P1名": p1_name, "P1_Pt": p1_pt, "P1_チップ": p1_chip,
+        "P2名": p2_name, "P2_Pt": p2_pt, "P2_チップ": p2_chip,
+        "P3名": p3_name, "P3_Pt": p3_pt, "P3_チップ": p3_チップ,
+    }])
 
-    # 新規データの作成
-    new_data = pd.DataFrame([
-        {"日付": str(match_date), "プレイヤー": p1_name, "スコア": p1_calc, "チップ": p1_chip, "収支": p1_chip_yen},
-        {"日付": str(match_date), "プレイヤー": p2_name, "スコア": p2_calc, "チップ": p2_chip, "収支": p2_chip_yen},
-        {"日付": str(match_date), "プレイヤー": p3_name, "スコア": p3_calc, "チップ": p3_chip, "収支": p3_chip_yen},
-    ])
-
-    # 既存データに追加
-    df = pd.concat([df, new_data], ignore_index=True)
-    
-    # Googleスプレッドシートに保存
+    # 既存データに追加して保存
+    df = pd.concat([df, new_row], ignore_index=True)
     save_data(df)
-    st.sidebar.success("データをGoogleスプレッドシートに保存しました！")
+    
+    st.sidebar.success("スプレッドシートに保存しました！")
     st.rerun()
 
-# メイン画面：成績一覧と集計
-st.header("📊 成績一覧・サマリー")
+# メイン画面：成績一覧
+st.header("📊 対局履歴一覧")
 
-if not df.empty and "プレイヤー" in df.columns:
-    # プレイヤーごとのトータル集計
-    summary = df.groupby("プレイヤー")[["スコア", "チップ", "収支"]].sum().reset_index()
-    
-    st.subheader("総合ランキング・収支")
-    st.dataframe(summary, use_container_width=True)
-
-    st.subheader("対局履歴")
+if not df.empty:
     st.dataframe(df, use_container_width=True)
-
+    
     if st.button("全データをリセット（注意）"):
-        empty_df = pd.DataFrame(columns=["日付", "プレイヤー", "スコア", "チップ", "収支"])
+        columns = ["日付", "半荘", "P1名", "P1_Pt", "P1_チップ", "P2名", "P2_Pt", "P2_チップ", "P3名", "P3_Pt", "P3_チップ"]
+        empty_df = pd.DataFrame(columns=columns)
         save_data(empty_df)
         st.success("データをリセットしました。")
         st.rerun()
