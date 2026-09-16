@@ -10,9 +10,13 @@ st.set_page_config(
     layout="centered"
 )
 
-# Googleスプレッドシートに接続する関数
+# Googleスプレッドシートに接続する関数（秘密鍵の改行エラー対策版）
 def get_gspread_client():
     creds_dict = dict(st.secrets["gcp_service_account"])
+    # 秘密鍵の改行コードを正しく矯正する処理
+    if "private_key" in creds_dict:
+        creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+        
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
@@ -66,7 +70,7 @@ with st.sidebar.form("score_form"):
     match_date = st.date_input("対局日")
     match_count = st.text_input("半荘（例: 1回戦）", "1回戦")
     
-    # 3人分のプレイヤー名とpt・チップの入力（直接ptを入力）
+    # 3人分のプレイヤー名とpt・チップの入力
     st.subheader("プレイヤー1")
     p1_name = st.text_input("名前 (1)", "プレイヤーA")
     p1_pt = st.number_input("ポイント (1) [例: +15, -10]", value=0.0, step=1.0, format="%.1f")
@@ -91,7 +95,7 @@ if submitted:
         "半荘": match_count,
         "P1名": p1_name, "P1_Pt": p1_pt, "P1_チップ": p1_chip,
         "P2名": p2_name, "P2_Pt": p2_pt, "P2_チップ": p2_chip,
-        "P3名": p3_name, "P3_Pt": p3_pt, "P3_チップ": p3_chip,
+        "P3名": p3_name, "P3_Pt": p3_pt, "P3_チップ": p3_チップ,
     }])
 
     # 既存データに追加して保存
