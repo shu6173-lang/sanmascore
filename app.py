@@ -10,36 +10,59 @@ st.title("🀄 三麻専用 スコア・チップ計算")
 if "history_by_date" not in st.session_state:
     st.session_state.history_by_date = {}
 
-# --- 1. ルール設定 ---
-st.sidebar.header("⚙️ ルール設定")
-chip_rate = st.sidebar.number_input("チップ1枚あたりのpt", value=1.0, step=0.5)
+# 過去のデータが存在する日付リストを取得
+saved_dates = [d for d, records in st.session_state.history_by_date.items() if len(records) > 0]
+saved_dates.sort(reverse=True)
 
-# プレイヤー名の設定（サイドバーで管理）
-st.sidebar.subheader("👤 プレイヤー名")
-p1_name = st.sidebar.text_input("プレイヤー1", "Aさん")
-p2_name = st.sidebar.text_input("プレイヤー2", "Bさん")
-p3_name = st.sidebar.text_input("プレイヤー3", "Cさん")
+# --- 1. ルール設定 & 対局日選択（サイドバー） ---
+st.sidebar.header("📅 対局日の選択")
 
-# --- 2. 対局日の選択 ---
-st.subheader("📅 対局日の選択")
-play_date = st.date_input("対局日を選んでください", datetime.date.today())
+# データ記録済みの日のクイック選択肢
+if saved_dates:
+    st.sidebar.markdown("**📌 記録済みの対局日**")
+    selected_saved_date = st.sidebar.selectbox(
+        "記録がある日を選択",
+        ["-- カレンダー指定 --"] + [f"🀄 {d} ({len(st.session_state.history_by_date[d])}半荘)" for d in saved_dates],
+    )
+else:
+    selected_saved_date = "-- カレンダー指定 --"
+
+# カレンダーで直接指定
+if selected_saved_date != "-- カレンダー指定 --":
+    # 選択肢の文字列（例: "🀄 2026-09-17 (3半荘)"）から日付を取り出す
+    raw_date_str = selected_saved_date.split(" ")[1]
+    default_date = datetime.datetime.strptime(raw_date_str, "%Y-%m-%d").date()
+else:
+    default_date = datetime.date.today()
+
+play_date = st.sidebar.date_input("日付を直接指定", default_date)
 date_str = play_date.strftime("%Y-%m-%d")
 
-# 選択された日付の履歴リストを取得（なければ作成）
+# 選択された日付の履歴リストを取得
 if date_str not in st.session_state.history_by_date:
     st.session_state.history_by_date[date_str] = []
 
 current_history = st.session_state.history_by_date[date_str]
 
-# 選択中の日付のデータ削除ボタン
+# ルールと名前設定
+st.sidebar.markdown("---")
+st.sidebar.header("⚙️ ルール設定")
+chip_rate = st.sidebar.number_input("チップ1枚あたりのpt", value=1.0, step=0.5)
+
+st.sidebar.subheader("👤 プレイヤー名")
+p1_name = st.sidebar.text_input("プレイヤー1", "Aさん")
+p2_name = st.sidebar.text_input("プレイヤー2", "Bさん")
+p3_name = st.sidebar.text_input("プレイヤー3", "Cさん")
+
+# リセットボタン
 if st.sidebar.button(f"🗑️ {date_str} のデータをリセット", type="secondary"):
     st.session_state.history_by_date[date_str] = []
     st.rerun()
 
-st.markdown("---")
-
-# --- 3. 今回の対局結果の入力 ---
-st.subheader(f"📝 {date_str} ｜ 第 {len(current_history) + 1} 半荘の入力")
+# --- 2. 今回の対局結果の入力 ---
+# 記録がある日の印を表示
+has_records_icon = " 📌(記録あり)" if len(current_history) > 0 else ""
+st.subheader(f"📝 {date_str}{has_records_icon} ｜ 第 {len(current_history) + 1} 半荘の入力")
 
 col1, col2, col3 = st.columns([2, 2, 2])
 
@@ -93,7 +116,7 @@ if total_chips != 0:
         f"💡 チップの合計枚数が 0 になっていません（現在: {total_chips:+d} 枚）"
     )
 
-# --- 4. 結果の追加 ---
+# --- 3. 結果の追加 ---
 if st.button(
     "➕ この半荘の結果を記録する", type="primary", use_container_width=True
 ):
@@ -113,7 +136,7 @@ if st.button(
     )
     st.rerun()
 
-# --- 5. 選択した日付の履歴と総合計の表示 ---
+# --- 4. 選択した日付の履歴と総合計の表示 ---
 if current_history:
     st.markdown("---")
     st.subheader(f"📊 【{date_str}】の総合計スコア")
@@ -128,7 +151,7 @@ if current_history:
         {
             "name": p2_name,
             "game_pt": sum(r[p2_name] for r in current_history),
-            "chip_count": sum(r["_p2_chip"] for r in current_history),
+            "chip_count": sum(r["_p3_chip"] for r in current_history) if p3_name == p["name"] else sum(r["_p2_chip"] for r in current_history),
         },
         {
             "name": p3_name,
@@ -136,6 +159,11 @@ if current_history:
             "chip_count": sum(r["_p3_chip"] for r in current_history),
         },
     ]
+
+    # 正しいインデックスでの集計補正
+    players_data[0]["chip_count"] = sum(r["_p1_chip"] for r in current_history)
+    players_data[1]["chip_count"] = sum(r["_p2_chip"] for r in current_history)
+    players_data[2]["chip_count"] = sum(r["_p3_chip"] for r in current_history)
 
     for p in players_data:
         p["chip_pt"] = p["chip_count"] * chip_rate
@@ -179,7 +207,7 @@ if current_history:
         use_container_width=True,
     )
 
-# --- 6. 全日程の統合CSV保存機能 ---
+# --- 5. 全日程の統合CSV保存機能 ---
 all_records = []
 for d, recs in st.session_state.history_by_date.items():
     all_records.extend(recs)
