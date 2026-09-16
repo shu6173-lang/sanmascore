@@ -158,73 +158,91 @@ with tab1:
 
     game_idx = len(current_history)
     
-    # セッションステートの初期化
+    # セッションステートの初期化 (前回の変更を追跡するため last キーも持たせる)
     for p_num in [1, 2, 3]:
-        if f"p{p_num}_p_{date_str}_{game_idx}" not in st.session_state:
-            st.session_state[f"p{p_num}_p_{date_str}_{game_idx}"] = 0.0
-        if f"p{p_num}_c_{date_str}_{game_idx}" not in st.session_state:
-            st.session_state[f"p{p_num}_c_{date_str}_{game_idx}"] = 0
+        p_key = f"p{p_num}_p_{date_str}_{game_idx}"
+        c_key = f"p{p_num}_c_{date_str}_{game_idx}"
+        if p_key not in st.session_state:
+            st.session_state[p_key] = 0.0
+            st.session_state[f"{p_key}_last"] = 0.0
+        if c_key not in st.session_state:
+            st.session_state[c_key] = 0
+            st.session_state[f"{c_key}_last"] = 0
 
-    # ウィジェットを描画する「前」に自動計算・書き換えを行っておく
-    points_list = [
-        (1, st.session_state[f"p1_p_{date_str}_{game_idx}"], st.session_state[f"p1_c_{date_str}_{game_idx}"]),
-        (2, st.session_state[f"p2_p_{date_str}_{game_idx}"], st.session_state[f"p2_c_{date_str}_{game_idx}"]),
-        (3, st.session_state[f"p3_p_{date_str}_{game_idx}"], st.session_state[f"p3_c_{date_str}_{game_idx}"]),
-    ]
-    
-    non_zero_items = [item for item in points_list if item[1] != 0.0 or item[2] != 0]
-    
-    if len(non_zero_items) == 2:
-        entered_idxs = [item[0] for item in non_zero_items]
-        target_idx = [i for i in [1, 2, 3] if i not in entered_idxs][0]
-        
-        other_idxs = entered_idxs
-        calc_pt = - (st.session_state[f"p{other_idxs[0]}_p_{date_str}_{game_idx}"] + st.session_state[f"p{other_idxs[1]}_p_{date_str}_{game_idx}"])
-        calc_chip = - (st.session_state[f"p{other_idxs[0]}_c_{date_str}_{game_idx}"] + st.session_state[f"p{other_idxs[1]}_c_{date_str}_{game_idx}"])
-        
-        st.session_state[f"p{target_idx}_p_{date_str}_{game_idx}"] = calc_pt
-        st.session_state[f"p{target_idx}_c_{date_str}_{game_idx}"] = calc_chip
+    # どの入力欄が直近で変更されたかを検知して、残りのプレイヤーを自動調整するコールバック
+    def make_callback(changed_p_num, is_chip):
+        def callback():
+            p_key_target = f"p{changed_p_num}_c_{date_str}_{game_idx}" if is_chip else f"p{changed_p_num}_p_{date_str}_{game_idx}"
+            last_key = f"{p_key_target}_last"
+            
+            current_val = st.session_state[p_key_target]
+            last_val = st.session_state[last_key]
+            diff = current_val - last_val
+            
+            if diff != 0:
+                other_p_nums = [p for p in [1, 2, 3] if p != changed_p_num]
+                # もう一方のプレイヤーに差分を均等、あるいは2番目のプレイヤーに押し付ける
+                # ここでは「2番目のプレイヤー(other_p_nums[0])」に逆向きの差分をすべて背負わせることで、合計0を美しく保つ
+                other_key = f"p{other_p_nums[0]}_c_{date_str}_{game_idx}" if is_chip else f"p{other_p_nums[0]}_p_{date_str}_{game_idx}"
+                
+                st.session_state[other_key] -= diff
+                st.session_state[f"{other_key}_last"] = st.session_state[other_key]
+                
+            st.session_state[last_key] = current_val
+        return callback
 
-    # 入力フォームの描画
+    # 入力フォームの描画（on_changeでリアルタイムにバランス調整）
     col1, col2, col3 = st.columns([2, 2, 2])
 
     with col1:
         st.markdown(f"**{p1_name}**")
-        p1_pt = st.number_input("ゲームPt", step=1.0, key=f"p1_p_{date_str}_{game_idx}")
-        p1_chip = st.number_input("チップ枚数", step=1, key=f"p1_c_{date_str}_{game_idx}")
+        p1_pt = st.number_input("ゲームPt", step=1.0, key=f"p1_p_{date_str}_{game_idx}", on_change=make_callback(1, False))
+        p1_chip = st.number_input("チップ枚数", step=1, key=f"p1_c_{date_str}_{game_idx}", on_change=make_callback(1, True))
 
     with col2:
         st.markdown(f"**{p2_name}**")
-        p2_pt = st.number_input("ゲームPt", step=1.0, key=f"p2_p_{date_str}_{game_idx}")
-        p2_chip = st.number_input("チップ枚数", step=1, key=f"p2_c_{date_str}_{game_idx}")
+        p2_pt = st.number_input("ゲームPt", step=1.0, key=f"p2_p_{date_str}_{game_idx}", on_change=make_callback(2, False))
+        p2_chip = st.number_input("チップ枚数", step=1, key=f"p2_c_{date_str}_{game_idx}", on_change=make_callback(2, True))
 
     with col3:
         st.markdown(f"**{p3_name}**")
-        p3_pt = st.number_input("ゲームPt", step=1.0, key=f"p3_p_{date_str}_{game_idx}")
-        p3_chip = st.number_input("チップ枚数", step=1, key=f"p3_c_{date_str}_{game_idx}")
+        p3_pt = st.number_input("ゲームPt", step=1.0, key=f"p3_p_{date_str}_{game_idx}", on_change=make_callback(3, False))
+        p3_chip = st.number_input("チップ枚数", step=1, key=f"p3_c_{date_str}_{game_idx}", on_change=make_callback(3, True))
+
+    # 現在の合計値チェック表示（確認用）
+    total_pt_check = p1_pt + p2_pt + p3_pt
+    total_chip_check = p1_chip + p2_chip + p3_chip
+    
+    if total_pt_check != 0 or total_chip_check != 0:
+        st.warning(f"⚠️ 合計が 0 になっていません (ゲームPt合計: {total_pt_check:+.1f} / チップ合計: {total_chip_check:+d}枚)")
+    else:
+        st.success("✨ バランスOK（ゲームPt・チップの合計が正常に0になっています）", icon="✅")
 
     # 結果の追加ボタン
     if st.button("➕ この半荘の結果を記録する", type="primary", use_container_width=True):
-        record = {
-            "日付": date_str,
-            "半荘": f"第{game_idx + 1}半荘",
-            "p1_name": p1_name,
-            "p2_name": p2_name,
-            "p3_name": p3_name,
-            "p1_pt": p1_pt,
-            "p2_pt": p2_pt,
-            "p3_pt": p3_pt,
-            "p1_chip": p1_chip,
-            "p2_chip": p2_chip,
-            "p3_chip": p3_chip,
-        }
-        current_history.append(record)
-        
-        append_data_to_sheet(record)
-        st.cache_data.clear()
-        
-        st.success(f"{date_str} の第 {len(current_history)} 半荘の結果を記録しました！（スプレッドシートに保存完了）")
-        st.rerun()
+        if total_pt_check != 0 or total_chip_check != 0:
+            st.error("エラー：ゲームPtとチップの合計がそれぞれ0になるように調整してください。")
+        else:
+            record = {
+                "日付": date_str,
+                "半荘": f"第{game_idx + 1}半荘",
+                "p1_name": p1_name,
+                "p2_name": p2_name,
+                "p3_name": p3_name,
+                "p1_pt": p1_pt,
+                "p2_pt": p2_pt,
+                "p3_pt": p3_pt,
+                "p1_chip": p1_chip,
+                "p2_chip": p2_chip,
+                "p3_chip": p3_chip,
+            }
+            current_history.append(record)
+            
+            append_data_to_sheet(record)
+            st.cache_data.clear()
+            
+            st.success(f"{date_str} の第 {len(current_history)} 半荘の結果を記録しました！（スプレッドシートに保存完了）")
+            st.rerun()
 
     # 選択した日付の成績表示
     if current_history:
