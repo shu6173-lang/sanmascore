@@ -66,7 +66,7 @@ with st.sidebar.form("score_form"):
     match_date = st.date_input("対局日")
     match_count = st.text_input("半荘（例: 1回戦）", "1回戦")
     
-    # 3人分のプレイヤー名とスコア・チップの入力
+    # 3人分のプレイヤー名とスコア・チップの入力（初期値を35000点に変更）
     st.subheader("プレイヤー1")
     p1_name = st.text_input("名前 (1)", "プレイヤーA")
     p1_score = st.number_input("持ち点 (1)", value=35000, step=1000)
@@ -79,7 +79,7 @@ with st.sidebar.form("score_form"):
 
     st.subheader("プレイヤー3")
     p3_name = st.text_input("名前 (3)", "プレイヤーC")
-    p3_score = st.number_input("持ち点 (3)", value=30000, step=1000)
+    p3_score = st.number_input("持ち点 (3)", value=35000, step=1000)
     p3_chip = st.number_input("チップ数 (3)", value=0, step=1)
 
     # 設定（レートやウマなど）
