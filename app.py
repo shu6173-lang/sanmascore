@@ -167,7 +167,7 @@ with tab1:
         if c_key not in st.session_state:
             st.session_state[c_key] = 0
 
-    # 入力フォームの描画（3人とも完全に自由に手動入力・変更可能。勝手に書き換わることはありません）
+    # 入力フォームの描画（session_stateをvalueとしてバインド）
     col1, col2, col3 = st.columns([2, 2, 2])
 
     with col1:
@@ -192,7 +192,7 @@ with tab1:
     if total_pt != 0.0 or total_chip != 0:
         st.warning(f"⚠️ 合計が 0 になっていません (ゲームPt合計: {total_pt:+.1f} / チップ合計: {total_chip:+d}枚)")
         
-        # 3人目をワンクリックで自動調整して0にする便利ボタン
+        # 3人目をワンクリックで自動調整して0にするボタン
         if st.button("🪄 3人目の数値を自動調整して合計を0にする", use_container_width=True):
             st.session_state[f"p3_p_{date_str}_{game_idx}"] = - (p1_pt + p2_pt)
             st.session_state[f"p3_c_{date_str}_{game_idx}"] = - (p1_chip + p2_chip)
