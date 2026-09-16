@@ -70,7 +70,6 @@ def load_data_from_sheet():
         if not data or len(data) <= 1:
             return {}
             
-        header = data[0]
         rows = data[1:]
         
         history_by_date = {}
@@ -199,11 +198,6 @@ with tab1:
             st.session_state[f"p{p_num}_c_{date_str}_{game_idx}"] = 0
 
     # 【重要】ウィジェットを描画する「前」に自動計算・書き換えを行っておく
-    curr_p1_p = st.session_state[f"p1_p_{date_str}_{game_idx}"]
-    curr_p2_p = st.session_state[f"p2_p_{date_str}_{game_idx}"]
-    curr_p3_p = st.session_state[f"p2_p_{date_str}_{game_idx}"] # 念のため
-    
-    # 2人分に入力があり、残り1人が0のときに自動補完する判定
     points_list = [
         (1, st.session_state[f"p1_p_{date_str}_{game_idx}"], st.session_state[f"p1_c_{date_str}_{game_idx}"]),
         (2, st.session_state[f"p2_p_{date_str}_{game_idx}"], st.session_state[f"p2_c_{date_str}_{game_idx}"]),
@@ -223,7 +217,7 @@ with tab1:
         
         target_name = p1_name if target_idx == 1 else (p2_name if target_idx == 2 else p3_name)
         
-        # ウィジェット描画前なので、安全にセッションを書き換えられる
+        # ウィジェット描画前なので安全にセッションを書き換えられる
         st.session_state[f"p{target_idx}_p_{date_str}_{game_idx}"] = calc_pt
         st.session_state[f"p{target_idx}_c_{date_str}_{game_idx}"] = calc_chip
         
@@ -452,7 +446,7 @@ with tab3:
             data=csv_all,
             file_name="sanma_results_all.csv",
             mime="text/csv",
-            use_container_width=test := True, # dummy
+            use_container_width=True,
         )
     else:
         st.info("📦 保存されているデータはありません。")
