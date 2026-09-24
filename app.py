@@ -245,9 +245,20 @@ with tab1:
             key=pt_keys[2], on_change=auto_calc_pt, args=(pt_keys[2],)
         )
 
-    pt_values = [p1_pt, p2_pt, p3_pt]
+    # Streamlitの再実行タイミングによって number_input の戻り値が
+    # 一時的に None になる場合があるため、session_state側の最新値を使う。
+    pt_values = [
+        st.session_state.get(pt_keys[0], 0),
+        st.session_state.get(pt_keys[1], 0),
+        st.session_state.get(pt_keys[2], 0),
+    ]
+    pt_values = [0 if v is None else int(v) for v in pt_values]
+
+    # 保存する値も最新のsession_stateに揃える
+    p1_pt, p2_pt, p3_pt = pt_values
+
     all_pt_entered = len(st.session_state.get(touched_key, [])) >= 2
-    total_pt = sum(int(v) for v in pt_values)
+    total_pt = sum(pt_values)
 
     if not all_pt_entered:
         st.info("2人のゲームPtを操作すると、残り1人を自動計算します。")
