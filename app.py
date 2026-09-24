@@ -178,22 +178,50 @@ with tab1:
     game_idx = len(current_history)
     st.subheader(f"📝 {date_str}{has_records_icon} ｜ 第 {game_idx + 1} 半荘の入力")
 
-    col1, col2, col3 = st.columns([2, 2, 2])
+    # 3人分を「ゲームPtの横一列 → チップの横一列」の順に入力
+    name_cols = st.columns(3)
+    for col, name in zip(name_cols, [p1_name, p2_name, p3_name]):
+        with col:
+            st.markdown(
+                f"<div style='text-align:center;font-weight:700'>{name}</div>",
+                unsafe_allow_html=True,
+            )
 
-    with col1:
-        st.markdown(f"**{p1_name}**")
-        p1_pt = st.number_input("ゲームPt", step=1, value=0, format="%d", key=f"p1_p_{date_str}_{game_idx}")
-        p1_chip = st.number_input("チップ枚数", step=1, value=0, key=f"p1_c_{date_str}_{game_idx}")
+    st.markdown("**🎮 ゲームPt**")
+    pt_col1, pt_col2, pt_col3 = st.columns(3)
+    with pt_col1:
+        p1_pt = st.number_input(
+            f"{p1_name} ゲームPt", step=1, value=0, format="%d",
+            key=f"p1_p_{date_str}_{game_idx}", label_visibility="collapsed"
+        )
+    with pt_col2:
+        p2_pt = st.number_input(
+            f"{p2_name} ゲームPt", step=1, value=0, format="%d",
+            key=f"p2_p_{date_str}_{game_idx}", label_visibility="collapsed"
+        )
+    with pt_col3:
+        p3_pt = st.number_input(
+            f"{p3_name} ゲームPt", step=1, value=0, format="%d",
+            key=f"p3_p_{date_str}_{game_idx}", label_visibility="collapsed"
+        )
 
-    with col2:
-        st.markdown(f"**{p2_name}**")
-        p2_pt = st.number_input("ゲームPt", step=1, value=0, format="%d", key=f"p2_p_{date_str}_{game_idx}")
-        p2_chip = st.number_input("チップ枚数", step=1, value=0, key=f"p2_c_{date_str}_{game_idx}")
-
-    with col3:
-        st.markdown(f"**{p3_name}**")
-        p3_pt = st.number_input("ゲームPt", step=1, value=0, format="%d", key=f"p3_p_{date_str}_{game_idx}")
-        p3_chip = st.number_input("チップ枚数", step=1, value=0, key=f"p3_c_{date_str}_{game_idx}")
+    st.markdown("**🪙 チップ枚数**")
+    chip_col1, chip_col2, chip_col3 = st.columns(3)
+    with chip_col1:
+        p1_chip = st.number_input(
+            f"{p1_name} チップ枚数", step=1, value=0,
+            key=f"p1_c_{date_str}_{game_idx}", label_visibility="collapsed"
+        )
+    with chip_col2:
+        p2_chip = st.number_input(
+            f"{p2_name} チップ枚数", step=1, value=0,
+            key=f"p2_c_{date_str}_{game_idx}", label_visibility="collapsed"
+        )
+    with chip_col3:
+        p3_chip = st.number_input(
+            f"{p3_name} チップ枚数", step=1, value=0,
+            key=f"p3_c_{date_str}_{game_idx}", label_visibility="collapsed"
+        )
 
     total_pt = p1_pt + p2_pt + p3_pt
     total_chip = p1_chip + p2_chip + p3_chip
