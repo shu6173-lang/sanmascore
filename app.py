@@ -7,74 +7,6 @@ import gspread
 
 st.set_page_config(page_title="三麻スコア計算", page_icon="🀄", layout="wide")
 
-# スマホでは「灰色の入力欄そのもの」を短くして3人分を横に収める
-st.markdown("""
-<style>
-@media (max-width: 700px) {
-  .block-container {
-    max-width: 100% !important;
-    padding-left: 0.35rem !important;
-    padding-right: 0.35rem !important;
-  }
-
-  .st-key-score_input {
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-
-  .st-key-score_input [data-testid="stHorizontalBlock"] {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    justify-content: center !important;
-    gap: 0.20rem !important;
-    width: 100% !important;
-  }
-
-  .st-key-score_input [data-testid="column"] {
-    flex: 0 0 31.5% !important;
-    width: 31.5% !important;
-    min-width: 0 !important;
-    max-width: 31.5% !important;
-  }
-
-  /* 灰色の数値入力欄をコンパクトにする */
-  .st-key-score_input [data-testid="stNumberInput"] {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-  }
-
-  .st-key-score_input [data-testid="stNumberInput"] > div {
-    width: 100% !important;
-    min-width: 0 !important;
-  }
-
-  .st-key-score_input [data-testid="stNumberInput"] input {
-    min-width: 0 !important;
-    width: 100% !important;
-    height: 2.35rem !important;
-    padding-left: 1.55rem !important;
-    padding-right: 1.55rem !important;
-    text-align: center !important;
-    font-size: 0.95rem !important;
-  }
-
-  /* Streamlit標準の − / ＋ ボタンは残して小さくする */
-  .st-key-score_input [data-testid="stNumberInput"] button {
-    width: 1.45rem !important;
-    min-width: 1.45rem !important;
-    height: 2.35rem !important;
-    padding: 0 !important;
-  }
-
-  .st-key-score_input p {
-    margin-bottom: 0.10rem !important;
-  }
-}
-</style>
-""", unsafe_allow_html=True)
-
 # ==========================================
 # 0. パスワード保護設定
 # ==========================================
@@ -247,50 +179,121 @@ with tab1:
     game_idx = len(current_history)
     st.subheader(f"📝 {date_str}{has_records_icon} ｜ 第 {game_idx + 1} 半荘の入力")
 
-    # 3人分を「ゲームPtの横一列 → チップの横一列」の順に入力
+    # スマホ向けコンパクト入力：各プレイヤーを横並びにし、
+    # 「－」「数値欄」「＋」を別部品にして本当に幅を短くする
+    st.markdown("""
+    <style>
+    @media (max-width: 700px) {
+      .block-container {
+        padding-left: .35rem !important;
+        padding-right: .35rem !important;
+      }
+      .st-key-score_input [data-testid="stHorizontalBlock"] {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: .18rem !important;
+      }
+      .st-key-score_input [data-testid="column"] {
+        min-width: 0 !important;
+      }
+      .st-key-score_input button {
+        min-height: 2.15rem !important;
+        height: 2.15rem !important;
+        padding: 0 !important;
+      }
+      .st-key-score_input [data-testid="stNumberInput"] input {
+        text-align: center !important;
+        padding: .15rem !important;
+        min-height: 2.15rem !important;
+        height: 2.15rem !important;
+      }
+      .st-key-score_input [data-testid="stNumberInput"] button {
+        display: none !important;
+      }
+      .st-key-score_input p {
+        margin-bottom: .1rem !important;
+      }
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    def compact_value(label, state_key, minus_key, plus_key, step=1):
+        if state_key not in st.session_state:
+            st.session_state[state_key] = 0
+
+        c_minus, c_value, c_plus = st.columns([1, 1.55, 1])
+        with c_minus:
+            if st.button("−", key=minus_key, use_container_width=True):
+                st.session_state[state_key] -= step
+        with c_plus:
+            if st.button("＋", key=plus_key, use_container_width=True):
+                st.session_state[state_key] += step
+        with c_value:
+            value = st.number_input(
+                label,
+                step=step,
+                format="%d",
+                key=state_key,
+                label_visibility="collapsed",
+            )
+        return int(value)
+
     with st.container(key="score_input"):
         name_cols = st.columns(3)
         for col, name in zip(name_cols, [p1_name, p2_name, p3_name]):
             with col:
                 st.markdown(
-                    f"<div style='text-align:center;font-weight:700'>{name}</div>",
+                    f"<div style='text-align:center;font-weight:700;font-size:.9rem'>{name}</div>",
                     unsafe_allow_html=True,
                 )
 
         st.markdown("**🎮 ゲームPt**")
-        pt_col1, pt_col2, pt_col3 = st.columns(3)
-        with pt_col1:
-            p1_pt = st.number_input(
-                f"{p1_name} ゲームPt", step=1, value=0, format="%d",
-                key=f"p1_p_{date_str}_{game_idx}", label_visibility="collapsed"
+        pt1, pt2, pt3 = st.columns(3)
+        with pt1:
+            p1_pt = compact_value(
+                f"{p1_name} ゲームPt",
+                f"p1_p_{date_str}_{game_idx}",
+                f"p1_p_minus_{date_str}_{game_idx}",
+                f"p1_p_plus_{date_str}_{game_idx}",
             )
-        with pt_col2:
-            p2_pt = st.number_input(
-                f"{p2_name} ゲームPt", step=1, value=0, format="%d",
-                key=f"p2_p_{date_str}_{game_idx}", label_visibility="collapsed"
+        with pt2:
+            p2_pt = compact_value(
+                f"{p2_name} ゲームPt",
+                f"p2_p_{date_str}_{game_idx}",
+                f"p2_p_minus_{date_str}_{game_idx}",
+                f"p2_p_plus_{date_str}_{game_idx}",
             )
-        with pt_col3:
-            p3_pt = st.number_input(
-                f"{p3_name} ゲームPt", step=1, value=0, format="%d",
-                key=f"p3_p_{date_str}_{game_idx}", label_visibility="collapsed"
+        with pt3:
+            p3_pt = compact_value(
+                f"{p3_name} ゲームPt",
+                f"p3_p_{date_str}_{game_idx}",
+                f"p3_p_minus_{date_str}_{game_idx}",
+                f"p3_p_plus_{date_str}_{game_idx}",
             )
 
-        st.markdown("**🪙 チップ枚数**")
-        chip_col1, chip_col2, chip_col3 = st.columns(3)
-        with chip_col1:
-            p1_chip = st.number_input(
-                f"{p1_name} チップ枚数", step=1, value=0,
-                key=f"p1_c_{date_str}_{game_idx}", label_visibility="collapsed"
+        st.markdown("**🪙 チップ**")
+        ch1, ch2, ch3 = st.columns(3)
+        with ch1:
+            p1_chip = compact_value(
+                f"{p1_name} チップ",
+                f"p1_c_{date_str}_{game_idx}",
+                f"p1_c_minus_{date_str}_{game_idx}",
+                f"p1_c_plus_{date_str}_{game_idx}",
             )
-        with chip_col2:
-            p2_chip = st.number_input(
-                f"{p2_name} チップ枚数", step=1, value=0,
-                key=f"p2_c_{date_str}_{game_idx}", label_visibility="collapsed"
+        with ch2:
+            p2_chip = compact_value(
+                f"{p2_name} チップ",
+                f"p2_c_{date_str}_{game_idx}",
+                f"p2_c_minus_{date_str}_{game_idx}",
+                f"p2_c_plus_{date_str}_{game_idx}",
             )
-        with chip_col3:
-            p3_chip = st.number_input(
-                f"{p3_name} チップ枚数", step=1, value=0,
-                key=f"p3_c_{date_str}_{game_idx}", label_visibility="collapsed"
+        with ch3:
+            p3_chip = compact_value(
+                f"{p3_name} チップ",
+                f"p3_c_{date_str}_{game_idx}",
+                f"p3_c_minus_{date_str}_{game_idx}",
+                f"p3_c_plus_{date_str}_{game_idx}",
             )
 
     total_pt = p1_pt + p2_pt + p3_pt
