@@ -179,84 +179,78 @@ with tab1:
     st.subheader(f"📝 {date_str}{has_records_icon} ｜ 第 {game_idx + 1} 半荘の入力")
 
     # 半荘ごとはゲームPtだけ入力。チップはその日の最後にまとめて入力する。
-    # --- ゲームPt：2人入力したら残り1人を自動計算 ---
-    # 初期値を None（空欄）にすることで、「未入力」と「0を入力」を区別する。
+    # --- ゲームPt：初期値0のまま、最初に操作した2人から残り1人を自動計算 ---
     pt_keys = [
         f"p1_p_{date_str}_{game_idx}",
         f"p2_p_{date_str}_{game_idx}",
         f"p3_p_{date_str}_{game_idx}",
     ]
+    touched_key = f"touched_players_{date_str}_{game_idx}"
     auto_target_key = f"auto_target_{date_str}_{game_idx}"
 
-    def step_from_empty(changed_key, delta):
-        """未入力で±を押した時だけ、0を基準に±1へ進める。"""
-        if st.session_state.get(changed_key) is None:
-            st.session_state[changed_key] = delta
-        auto_calc_pt(changed_key)
+    if touched_key not in st.session_state:
+        st.session_state[touched_key] = []
+    if auto_target_key not in st.session_state:
+        st.session_state[auto_target_key] = None
 
     def auto_calc_pt(changed_key):
-        vals = [st.session_state.get(k) for k in pt_keys]
-        auto_target = st.session_state.get(auto_target_key)
+        touched = st.session_state[touched_key]
+        auto_target = st.session_state[auto_target_key]
 
-        # 自動計算された欄を本人が編集した場合は、自動追従を解除する
+        # 自動計算された欄を本人が変更したら、自動追従を解除して手入力扱いにする
         if auto_target == changed_key:
             st.session_state[auto_target_key] = None
+            if changed_key not in touched:
+                touched.append(changed_key)
             return
 
-        # すでに自動計算する欄が決まっている場合、
-        # 元の2人のどちらかを直したら自動欄も再計算する
+        # 操作したプレイヤーとして記録
+        if changed_key not in touched:
+            touched.append(changed_key)
+
+        # 自動計算先がすでに決まっていれば、元の2人を直すたび再計算
+        auto_target = st.session_state[auto_target_key]
         if auto_target in pt_keys:
-            target_i = pt_keys.index(auto_target)
-            other_vals = [vals[i] for i in range(3) if i != target_i]
-            if all(v is not None for v in other_vals):
-                st.session_state[auto_target] = -sum(int(v) for v in other_vals)
+            others = [k for k in pt_keys if k != auto_target]
+            st.session_state[auto_target] = -sum(int(st.session_state.get(k, 0)) for k in others)
             return
 
-        # まだ自動欄が決まっていない場合、ちょうど2人入力済みなら残りを計算
-        entered = [i for i, v in enumerate(vals) if v is not None]
-        if len(entered) == 2:
-            missing_i = next(i for i in range(3) if i not in entered)
-            target = pt_keys[missing_i]
-            st.session_state[target] = -sum(int(vals[i]) for i in entered)
+        # 最初に操作した2人が決まった時点で、残り1人を自動計算
+        manual_keys = [k for k in touched if k in pt_keys][:2]
+        if len(manual_keys) == 2:
+            target = next(k for k in pt_keys if k not in manual_keys)
             st.session_state[auto_target_key] = target
-
-    def score_input(name, key, idx):
-        st.markdown(f"**{name}**")
-        b1, b2 = st.columns(2)
-        with b1:
-            if st.button("−1", key=f"init_minus_{key}", use_container_width=True):
-                current = st.session_state.get(key)
-                st.session_state[key] = -1 if current is None else int(current) - 1
-                auto_calc_pt(key)
-                st.rerun()
-        with b2:
-            if st.button("＋1", key=f"init_plus_{key}", use_container_width=True):
-                current = st.session_state.get(key)
-                st.session_state[key] = 1 if current is None else int(current) + 1
-                auto_calc_pt(key)
-                st.rerun()
-        return st.number_input(
-            "ゲームPt", step=1, value=None, format="%d",
-            placeholder="未入力",
-            key=key,
-            on_change=auto_calc_pt,
-            args=(key,),
-        )
+            st.session_state[target] = -sum(int(st.session_state.get(k, 0)) for k in manual_keys)
 
     col1, col2, col3 = st.columns([2, 2, 2])
+
     with col1:
-        p1_pt = score_input(p1_name, pt_keys[0], 0)
+        st.markdown(f"**{p1_name}**")
+        p1_pt = st.number_input(
+            "ゲームPt", step=1, value=0, format="%d",
+            key=pt_keys[0], on_change=auto_calc_pt, args=(pt_keys[0],)
+        )
+
     with col2:
-        p2_pt = score_input(p2_name, pt_keys[1], 1)
+        st.markdown(f"**{p2_name}**")
+        p2_pt = st.number_input(
+            "ゲームPt", step=1, value=0, format="%d",
+            key=pt_keys[1], on_change=auto_calc_pt, args=(pt_keys[1],)
+        )
+
     with col3:
-        p3_pt = score_input(p3_name, pt_keys[2], 2)
+        st.markdown(f"**{p3_name}**")
+        p3_pt = st.number_input(
+            "ゲームPt", step=1, value=0, format="%d",
+            key=pt_keys[2], on_change=auto_calc_pt, args=(pt_keys[2],)
+        )
 
     pt_values = [p1_pt, p2_pt, p3_pt]
-    all_pt_entered = all(v is not None for v in pt_values)
-    total_pt = sum(int(v) for v in pt_values if v is not None)
+    all_pt_entered = len(st.session_state.get(touched_key, [])) >= 2
+    total_pt = sum(int(v) for v in pt_values)
 
     if not all_pt_entered:
-        st.info("2人分のゲームPtを入力すると、残り1人を自動計算します。")
+        st.info("2人のゲームPtを操作すると、残り1人を自動計算します。")
     elif total_pt != 0:
         st.warning(f"⚠️ ゲームPt合計が 0 になっていません ({total_pt:+d} pt)")
     else:
