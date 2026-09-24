@@ -556,6 +556,7 @@ with tab2:
 
         stats = {}
         daily_totals = {}
+        daily_chips = {}
         for r in all_records:
             game_results = [
                 (r["p1_name"], int(r["p1_pt"]), int(r["p1_chip"])),
@@ -586,6 +587,12 @@ with tab2:
                     daily_totals[name].get(r["日付"], 0) + g_pt + chip * chip_rate
                 )
 
+                # チップは1日の最終結果として日付単位で集計
+                daily_chips.setdefault(name, {})
+                daily_chips[name][r["日付"]] = (
+                    daily_chips[name].get(r["日付"], 0) + chip
+                )
+
         ranking_list = []
         for name, s in stats.items():
             chip_pt = s["total_chips"] * chip_rate
@@ -594,8 +601,10 @@ with tab2:
                 (s["r1_count"] + s["r2_count"] * 2 + s["r3_count"] * 3) / s["games"]
                 if s["games"] else 0
             )
+            avg_pt = s["total_game_pt"] / s["games"] if s["games"] else 0
             avg_chip = s["total_chips"] / s["games"] if s["games"] else 0
             day_values = list(daily_totals.get(name, {}).values())
+            day_chip_values = list(daily_chips.get(name, {}).values())
             ranking_list.append({
                 "プレイヤー名": name,
                 "通算総合Pt": int(total_pt),
@@ -604,7 +613,10 @@ with tab2:
                 "2着": s["r2_count"],
                 "3着": s["r3_count"],
                 "平均順位": round(avg_rank, 2),
+                "平均Pt": round(avg_pt, 2),
                 "平均チップ": round(avg_chip, 2),
+                "最高チップ": int(max(day_chip_values)) if day_chip_values else 0,
+                "最低チップ": int(min(day_chip_values)) if day_chip_values else 0,
                 "1日最高Pt": int(max(day_values)) if day_values else 0,
                 "1日最低Pt": int(min(day_values)) if day_values else 0,
             })
