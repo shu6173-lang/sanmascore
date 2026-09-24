@@ -204,30 +204,19 @@ with tab1:
         touched = st.session_state[touched_key]
         auto_target = st.session_state[auto_target_key]
 
-        # 自動計算された欄を本人が変更したら、自動追従を解除して手入力扱いにする
-        if auto_target == changed_key:
-            st.session_state[auto_target_key] = None
-            if changed_key not in touched:
-                touched.append(changed_key)
-            return
-
-        # 操作したプレイヤーとして記録
+        # 自動計算は「最初の2人が決まった瞬間」の1回だけ。
+        # その後は3人とも普通の手入力に戻し、±で自由に修正できる。
         if changed_key not in touched:
             touched.append(changed_key)
 
-        # 自動計算先がすでに決まっていれば、元の2人を直すたび再計算
-        auto_target = st.session_state[auto_target_key]
-        if auto_target in pt_keys:
-            others = [k for k in pt_keys if k != auto_target]
-            st.session_state[auto_target] = -sum(int(st.session_state.get(k, 0)) for k in others)
-            return
-
-        # 最初に操作した2人が決まった時点で、残り1人を自動計算
         manual_keys = [k for k in touched if k in pt_keys][:2]
-        if len(manual_keys) == 2:
+        if len(manual_keys) == 2 and st.session_state.get(auto_target_key) is None:
             target = next(k for k in pt_keys if k not in manual_keys)
-            st.session_state[auto_target_key] = target
-            st.session_state[target] = -sum(int(st.session_state.get(k, 0)) for k in manual_keys)
+            st.session_state[target] = -sum(
+                int(st.session_state.get(k, 0)) for k in manual_keys
+            )
+            # "done" にして、以後は再自動計算しない
+            st.session_state[auto_target_key] = "done"
 
     col1, col2, col3 = st.columns([2, 2, 2])
 
