@@ -227,59 +227,6 @@ with tab1:
     if current_history:
         st.markdown("---")
 
-        # --- その日の最後にチップをまとめて入力 ---
-        st.subheader("🪙 本日のチップ")
-        st.caption("対局が終わったら、1日分の最終チップ枚数をここに入力してください。1枚 = 2pt")
-
-        # 既に保存済みの当日チップ合計を初期値にする
-        saved_p1_chip = sum(int(r["p1_chip"]) for r in current_history)
-        saved_p2_chip = sum(int(r["p2_chip"]) for r in current_history)
-        saved_p3_chip = sum(int(r["p3_chip"]) for r in current_history)
-
-        chip_col1, chip_col2, chip_col3 = st.columns(3)
-        with chip_col1:
-            st.markdown(f"**{p1_name}**")
-            day_p1_chip = st.number_input(
-                "チップ枚数", step=1, value=saved_p1_chip,
-                key=f"day_p1_chip_{date_str}"
-            )
-        with chip_col2:
-            st.markdown(f"**{p2_name}**")
-            day_p2_chip = st.number_input(
-                "チップ枚数", step=1, value=saved_p2_chip,
-                key=f"day_p2_chip_{date_str}"
-            )
-        with chip_col3:
-            st.markdown(f"**{p3_name}**")
-            day_p3_chip = st.number_input(
-                "チップ枚数", step=1, value=saved_p3_chip,
-                key=f"day_p3_chip_{date_str}"
-            )
-
-        day_chip_total = day_p1_chip + day_p2_chip + day_p3_chip
-        if day_chip_total != 0:
-            st.warning(f"⚠️ チップ合計が 0 になっていません ({day_chip_total:+d}枚)")
-        else:
-            st.success("✨ チップ合計が 0 になっています！", icon="✅")
-
-        if st.button("💾 本日のチップを保存", use_container_width=True):
-            if day_chip_total != 0:
-                st.error("エラー：3人のチップ合計が0になるように調整してください。")
-            else:
-                # 1日分のチップは先頭の半荘レコードだけに保持し、
-                # 他の半荘は0にすることで通算集計の二重計上を防ぐ。
-                for r in current_history:
-                    r["p1_chip"] = 0
-                    r["p2_chip"] = 0
-                    r["p3_chip"] = 0
-                current_history[0]["p1_chip"] = int(day_p1_chip)
-                current_history[0]["p2_chip"] = int(day_p2_chip)
-                current_history[0]["p3_chip"] = int(day_p3_chip)
-                save_all_to_sheet(st.session_state.history_by_date)
-                st.cache_data.clear()
-                st.success("本日のチップを保存しました。")
-                st.rerun()
-
         st.markdown("---")
         st.subheader(f"📊 【{date_str}】の当日スコア")
 
@@ -380,6 +327,59 @@ with tab1:
 # ==========================================
 # タブ 2: 通算成績ランキング
 # ==========================================
+        # --- その日の最後にチップをまとめて入力 ---
+        st.subheader("🪙 本日のチップ")
+        st.caption("対局が終わったら、1日分の最終チップ枚数をここに入力してください。1枚 = 2pt")
+
+        # 既に保存済みの当日チップ合計を初期値にする
+        saved_p1_chip = sum(int(r["p1_chip"]) for r in current_history)
+        saved_p2_chip = sum(int(r["p2_chip"]) for r in current_history)
+        saved_p3_chip = sum(int(r["p3_chip"]) for r in current_history)
+
+        chip_col1, chip_col2, chip_col3 = st.columns(3)
+        with chip_col1:
+            st.markdown(f"**{p1_name}**")
+            day_p1_chip = st.number_input(
+                "チップ枚数", step=1, value=saved_p1_chip,
+                key=f"day_p1_chip_{date_str}"
+            )
+        with chip_col2:
+            st.markdown(f"**{p2_name}**")
+            day_p2_chip = st.number_input(
+                "チップ枚数", step=1, value=saved_p2_chip,
+                key=f"day_p2_chip_{date_str}"
+            )
+        with chip_col3:
+            st.markdown(f"**{p3_name}**")
+            day_p3_chip = st.number_input(
+                "チップ枚数", step=1, value=saved_p3_chip,
+                key=f"day_p3_chip_{date_str}"
+            )
+
+        day_chip_total = day_p1_chip + day_p2_chip + day_p3_chip
+        if day_chip_total != 0:
+            st.warning(f"⚠️ チップ合計が 0 になっていません ({day_chip_total:+d}枚)")
+        else:
+            st.success("✨ チップ合計が 0 になっています！", icon="✅")
+
+        if st.button("💾 本日のチップを保存", use_container_width=True):
+            if day_chip_total != 0:
+                st.error("エラー：3人のチップ合計が0になるように調整してください。")
+            else:
+                # 1日分のチップは先頭の半荘レコードだけに保持し、
+                # 他の半荘は0にすることで通算集計の二重計上を防ぐ。
+                for r in current_history:
+                    r["p1_chip"] = 0
+                    r["p2_chip"] = 0
+                    r["p3_chip"] = 0
+                current_history[0]["p1_chip"] = int(day_p1_chip)
+                current_history[0]["p2_chip"] = int(day_p2_chip)
+                current_history[0]["p3_chip"] = int(day_p3_chip)
+                save_all_to_sheet(st.session_state.history_by_date)
+                st.cache_data.clear()
+                st.success("本日のチップを保存しました。")
+                st.rerun()
+
 with tab2:
     all_records = []
     for d, recs in st.session_state.history_by_date.items():
