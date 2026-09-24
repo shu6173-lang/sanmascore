@@ -11,26 +11,56 @@ st.set_page_config(page_title="三麻スコア計算", page_icon="🀄", layout=
 st.markdown("""
 <style>
 @media (max-width: 700px) {
+  html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+  .block-container {
+    max-width: 100% !important;
+    padding-left: 0.45rem !important;
+    padding-right: 0.45rem !important;
+    overflow-x: hidden !important;
+  }
+  .st-key-score_input {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
   .st-key-score_input [data-testid="stHorizontalBlock"] {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
-    gap: 0.30rem !important;
+    gap: 0.15rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
   .st-key-score_input [data-testid="column"] {
     width: 33.333% !important;
     flex: 1 1 0 !important;
     min-width: 0 !important;
+    max-width: 33.333% !important;
+    overflow: hidden !important;
+  }
+  .st-key-score_input [data-testid="stNumberInput"] {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  .st-key-score_input [data-testid="stNumberInput"] > div {
+    width: 100% !important;
+    min-width: 0 !important;
   }
   .st-key-score_input [data-testid="stNumberInput"] input {
     min-width: 0 !important;
-    padding-left: 0.35rem !important;
-    padding-right: 0.35rem !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    padding-left: 0.15rem !important;
+    padding-right: 0.15rem !important;
     text-align: center !important;
   }
   .st-key-score_input [data-testid="stNumberInput"] button {
-    width: 1.75rem !important;
-    min-width: 1.75rem !important;
+    width: 1.45rem !important;
+    min-width: 1.45rem !important;
     padding: 0 !important;
   }
   .st-key-score_input p {
