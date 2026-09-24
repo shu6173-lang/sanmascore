@@ -425,35 +425,107 @@ with tab1:
 # ==========================================
         # --- その日の最後にチップをまとめて入力 ---
         st.subheader("🪙 本日のチップ")
-        st.caption("対局が終わったら、1日分の最終チップ枚数をここに入力してください。1枚 = 2pt")
+        st.caption("対局が終わったら、1日分の最終チップ枚数を入力してください。2人を操作すると残り1人を自動計算します。1枚 = 2pt")
 
-        # 既に保存済みの当日チップ合計を初期値にする
-        saved_p1_chip = sum(int(r["p1_chip"]) for r in current_history)
-        saved_p2_chip = sum(int(r["p2_chip"]) for r in current_history)
-        saved_p3_chip = sum(int(r["p3_chip"]) for r in current_history)
+        saved_chips = [
+            sum(int(r["p1_chip"]) for r in current_history),
+            sum(int(r["p2_chip"]) for r in current_history),
+            sum(int(r["p3_chip"]) for r in current_history),
+        ]
+
+        chip_keys = [
+            f"day_p1_chip_{date_str}",
+            f"day_p2_chip_{date_str}",
+            f"day_p3_chip_{date_str}",
+        ]
+        chip_touched_key = f"chip_touched_{date_str}"
+        chip_auto_target_key = f"chip_auto_target_{date_str}"
+        chip_auto_expected_key = f"chip_auto_expected_{date_str}"
+
+        # 日付ごとの初回表示では、保存済みチップを初期値にする
+        for k, saved in zip(chip_keys, saved_chips):
+            if k not in st.session_state or st.session_state.get(k) is None:
+                st.session_state[k] = int(saved)
+
+        if chip_touched_key not in st.session_state:
+            st.session_state[chip_touched_key] = []
+        if chip_auto_target_key not in st.session_state:
+            st.session_state[chip_auto_target_key] = None
+        if chip_auto_expected_key not in st.session_state:
+            st.session_state[chip_auto_expected_key] = None
+
+        def auto_calc_chip(changed_key):
+            touched = st.session_state[chip_touched_key]
+            auto_target = st.session_state.get(chip_auto_target_key)
+            current_value = int(st.session_state.get(changed_key, 0) or 0)
+
+            # 自動欄の変更通知：
+            # 自動計算した予定値なら追従継続、違う値なら本人操作なので解除
+            if auto_target == changed_key:
+                expected = st.session_state.get(chip_auto_expected_key)
+                if expected is not None and current_value == int(expected):
+                    st.session_state[chip_auto_expected_key] = None
+                    return
+
+                st.session_state[chip_auto_target_key] = "manual"
+                st.session_state[chip_auto_expected_key] = None
+                if changed_key not in touched:
+                    touched.append(changed_key)
+                return
+
+            if changed_key not in touched:
+                touched.append(changed_key)
+
+            auto_target = st.session_state.get(chip_auto_target_key)
+
+            # 自動追従中は、元の2人の最新値から残り1人を再計算
+            if auto_target in chip_keys:
+                others = [k for k in chip_keys if k != auto_target]
+                new_value = -sum(int(st.session_state.get(k, 0) or 0) for k in others)
+                st.session_state[chip_auto_expected_key] = new_value
+                st.session_state[auto_target] = new_value
+                return
+
+            # 自動欄を本人が触った後は完全手入力
+            if auto_target == "manual":
+                return
+
+            # 最初に操作した2人が決まったら、残り1人を自動計算
+            manual_keys = [k for k in touched if k in chip_keys][:2]
+            if len(manual_keys) == 2:
+                target = next(k for k in chip_keys if k not in manual_keys)
+                new_value = -sum(int(st.session_state.get(k, 0) or 0) for k in manual_keys)
+                st.session_state[chip_auto_target_key] = target
+                st.session_state[chip_auto_expected_key] = new_value
+                st.session_state[target] = new_value
 
         chip_col1, chip_col2, chip_col3 = st.columns(3)
         with chip_col1:
             st.markdown(f"**{p1_name}**")
-            day_p1_chip = st.number_input(
-                "チップ枚数", step=1, value=saved_p1_chip,
-                key=f"day_p1_chip_{date_str}"
+            st.number_input(
+                "チップ枚数", step=1, key=chip_keys[0],
+                on_change=auto_calc_chip, args=(chip_keys[0],)
             )
         with chip_col2:
             st.markdown(f"**{p2_name}**")
-            day_p2_chip = st.number_input(
-                "チップ枚数", step=1, value=saved_p2_chip,
-                key=f"day_p2_chip_{date_str}"
+            st.number_input(
+                "チップ枚数", step=1, key=chip_keys[1],
+                on_change=auto_calc_chip, args=(chip_keys[1],)
             )
         with chip_col3:
             st.markdown(f"**{p3_name}**")
-            day_p3_chip = st.number_input(
-                "チップ枚数", step=1, value=saved_p3_chip,
-                key=f"day_p3_chip_{date_str}"
+            st.number_input(
+                "チップ枚数", step=1, key=chip_keys[2],
+                on_change=auto_calc_chip, args=(chip_keys[2],)
             )
 
-        day_chip_total = day_p1_chip + day_p2_chip + day_p3_chip
-        if day_chip_total != 0:
+        chip_values = [int(st.session_state.get(k, 0) or 0) for k in chip_keys]
+        day_p1_chip, day_p2_chip, day_p3_chip = chip_values
+        day_chip_total = sum(chip_values)
+
+        if len(st.session_state.get(chip_touched_key, [])) < 2:
+            st.info("2人のチップを操作すると、残り1人を自動計算します。")
+        elif day_chip_total != 0:
             st.warning(f"⚠️ チップ合計が 0 になっていません ({day_chip_total:+d}枚)")
         else:
             st.success("✨ チップ合計が 0 になっています！", icon="✅")
@@ -462,8 +534,6 @@ with tab1:
             if day_chip_total != 0:
                 st.error("エラー：3人のチップ合計が0になるように調整してください。")
             else:
-                # 1日分のチップは先頭の半荘レコードだけに保持し、
-                # 他の半荘は0にすることで通算集計の二重計上を防ぐ。
                 for r in current_history:
                     r["p1_chip"] = 0
                     r["p2_chip"] = 0
