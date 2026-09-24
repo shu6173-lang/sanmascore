@@ -280,7 +280,7 @@ with tab1:
             table_data.append(row)
 
         display_df = pd.DataFrame(table_data)
-        st.dataframe(display_df, use_container_width=True)
+        st.dataframe(display_df, use_container_width=True, hide_index=True)
 
         st.markdown("#### 🗑️ 誤入力した半荘を個別削除")
         delete_cols = st.columns(min(len(current_history), 3))
