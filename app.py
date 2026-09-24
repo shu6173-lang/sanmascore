@@ -188,6 +188,12 @@ with tab1:
     ]
     auto_target_key = f"auto_target_{date_str}_{game_idx}"
 
+    def step_from_empty(changed_key, delta):
+        """未入力で±を押した時だけ、0を基準に±1へ進める。"""
+        if st.session_state.get(changed_key) is None:
+            st.session_state[changed_key] = delta
+        auto_calc_pt(changed_key)
+
     def auto_calc_pt(changed_key):
         vals = [st.session_state.get(k) for k in pt_keys]
         auto_target = st.session_state.get(auto_target_key)
@@ -214,37 +220,36 @@ with tab1:
             st.session_state[target] = -sum(int(vals[i]) for i in entered)
             st.session_state[auto_target_key] = target
 
+    def score_input(name, key, idx):
+        st.markdown(f"**{name}**")
+        b1, b2 = st.columns(2)
+        with b1:
+            if st.button("−1", key=f"init_minus_{key}", use_container_width=True):
+                current = st.session_state.get(key)
+                st.session_state[key] = -1 if current is None else int(current) - 1
+                auto_calc_pt(key)
+                st.rerun()
+        with b2:
+            if st.button("＋1", key=f"init_plus_{key}", use_container_width=True):
+                current = st.session_state.get(key)
+                st.session_state[key] = 1 if current is None else int(current) + 1
+                auto_calc_pt(key)
+                st.rerun()
+        return st.number_input(
+            "ゲームPt", step=1, value=None, format="%d",
+            placeholder="未入力",
+            key=key,
+            on_change=auto_calc_pt,
+            args=(key,),
+        )
+
     col1, col2, col3 = st.columns([2, 2, 2])
-
     with col1:
-        st.markdown(f"**{p1_name}**")
-        p1_pt = st.number_input(
-            "ゲームPt", step=1, value=None, format="%d",
-            placeholder="未入力",
-            key=pt_keys[0],
-            on_change=auto_calc_pt,
-            args=(pt_keys[0],),
-        )
-
+        p1_pt = score_input(p1_name, pt_keys[0], 0)
     with col2:
-        st.markdown(f"**{p2_name}**")
-        p2_pt = st.number_input(
-            "ゲームPt", step=1, value=None, format="%d",
-            placeholder="未入力",
-            key=pt_keys[1],
-            on_change=auto_calc_pt,
-            args=(pt_keys[1],),
-        )
-
+        p2_pt = score_input(p2_name, pt_keys[1], 1)
     with col3:
-        st.markdown(f"**{p3_name}**")
-        p3_pt = st.number_input(
-            "ゲームPt", step=1, value=None, format="%d",
-            placeholder="未入力",
-            key=pt_keys[2],
-            on_change=auto_calc_pt,
-            args=(pt_keys[2],),
-        )
+        p3_pt = score_input(p3_name, pt_keys[2], 2)
 
     pt_values = [p1_pt, p2_pt, p3_pt]
     all_pt_entered = all(v is not None for v in pt_values)
