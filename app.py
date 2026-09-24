@@ -70,13 +70,13 @@ def load_data_from_sheet():
                 "日付": date_str,
                 "半荘": row[1],
                 "p1_name": row[2],
-                "p1_pt": float(row[3]) if row[3] != "" else 0.0,
+                "p1_pt": int(float(row[3])) if row[3] != "" else 0,
                 "p1_chip": int(float(row[4])) if row[4] != "" else 0,
                 "p2_name": row[5],
-                "p2_pt": float(row[6]) if row[6] != "" else 0.0,
+                "p2_pt": int(float(row[6])) if row[6] != "" else 0,
                 "p2_chip": int(float(row[7])) if row[7] != "" else 0,
                 "p3_name": row[8],
-                "p3_pt": float(row[9]) if row[9] != "" else 0.0,
+                "p3_pt": int(float(row[9])) if row[9] != "" else 0,
                 "p3_chip": int(float(row[10])) if row[10] != "" else 0,
             }
             if date_str not in history_by_date:
@@ -153,12 +153,13 @@ current_history = st.session_state.history_by_date[date_str]
 st.sidebar.markdown("---")
 st.sidebar.header("⚙️ ルール設定")
 
-chip_rate = st.sidebar.number_input("チップ1枚あたりのpt", value=2.0, step=0.5)
+chip_rate = 2
+st.sidebar.caption("🪙 チップ1枚 = 2pt（固定）")
 
 st.sidebar.subheader("👤 プレイヤー名")
-p1_name = st.sidebar.text_input("プレイヤー1", "Aさん")
-p2_name = st.sidebar.text_input("プレイヤー2", "Bさん")
-p3_name = st.sidebar.text_input("プレイヤー3", "Cさん")
+p1_name = st.sidebar.text_input("プレイヤー1", "自分")
+p2_name = st.sidebar.text_input("プレイヤー2", "相手A")
+p3_name = st.sidebar.text_input("プレイヤー3", "相手B")
 
 if st.sidebar.button(f"🗑️ {date_str} のデータをリセット", type="secondary"):
     st.session_state.history_by_date[date_str] = []
@@ -181,29 +182,29 @@ with tab1:
 
     with col1:
         st.markdown(f"**{p1_name}**")
-        p1_pt = st.number_input("ゲームPt", step=1.0, value=0.0, key=f"p1_p_{date_str}_{game_idx}")
+        p1_pt = st.number_input("ゲームPt", step=1, value=0, format="%d", key=f"p1_p_{date_str}_{game_idx}")
         p1_chip = st.number_input("チップ枚数", step=1, value=0, key=f"p1_c_{date_str}_{game_idx}")
 
     with col2:
         st.markdown(f"**{p2_name}**")
-        p2_pt = st.number_input("ゲームPt", step=1.0, value=0.0, key=f"p2_p_{date_str}_{game_idx}")
+        p2_pt = st.number_input("ゲームPt", step=1, value=0, format="%d", key=f"p2_p_{date_str}_{game_idx}")
         p2_chip = st.number_input("チップ枚数", step=1, value=0, key=f"p2_c_{date_str}_{game_idx}")
 
     with col3:
         st.markdown(f"**{p3_name}**")
-        p3_pt = st.number_input("ゲームPt", step=1.0, value=0.0, key=f"p3_p_{date_str}_{game_idx}")
+        p3_pt = st.number_input("ゲームPt", step=1, value=0, format="%d", key=f"p3_p_{date_str}_{game_idx}")
         p3_chip = st.number_input("チップ枚数", step=1, value=0, key=f"p3_c_{date_str}_{game_idx}")
 
     total_pt = p1_pt + p2_pt + p3_pt
     total_chip = p1_chip + p2_chip + p3_chip
 
-    if total_pt != 0.0 or total_chip != 0:
-        st.warning(f"⚠️ 合計が 0 になっていません (ゲームPt合計: {total_pt:+.1f} / チップ合計: {total_chip:+d}枚)")
+    if total_pt != 0 or total_chip != 0:
+        st.warning(f"⚠️ 合計が 0 になっていません (ゲームPt合計: {total_pt:+d} / チップ合計: {total_chip:+d}枚)")
     else:
         st.success("✨ 合計が綺麗に 0 になっています！", icon="✅")
 
     if st.button("➕ この半荘の結果を記録する", type="primary", use_container_width=True):
-        if total_pt != 0.0 or total_chip != 0:
+        if total_pt != 0 or total_chip != 0:
             st.error("エラー：ゲームPtとチップの合計がそれぞれ0になるように調整してください。")
         else:
             record = {
@@ -226,7 +227,6 @@ with tab1:
             st.success(f"{date_str} の第 {len(current_history)} 半荘の結果を記録しました！（スプレッドシートに保存完了）")
             st.rerun()
 
-    # 選択した日付の成績表示
     if current_history:
         st.markdown("---")
         st.subheader(f"📊 【{date_str}】の当日スコア")
@@ -236,7 +236,7 @@ with tab1:
             for p_idx in [1, 2, 3]:
                 p_name = r[f"p{p_idx}_name"]
                 if p_name not in players_summary:
-                    players_summary[p_name] = {"game_pt": 0.0, "chip_count": 0}
+                    players_summary[p_name] = {"game_pt": 0, "chip_count": 0}
                 players_summary[p_name]["game_pt"] += r[f"p{p_idx}_pt"]
                 players_summary[p_name]["chip_count"] += r[f"p{p_idx}_chip"]
 
@@ -260,12 +260,12 @@ with tab1:
             with cols[col_idx]:
                 st.metric(
                     label=f"🏆 {idx+1}位 : {p['name']}",
-                    value=f"{p['total_pt']:+.1f} pt",
+                    value=f"{int(p['total_pt']):+d} pt",
                     delta=f"本日総合計",
                 )
                 st.caption(
-                    f"🎮 **ゲームPt:** {p['game_pt']:+.1f} pt\n\n"
-                    f"🪙 **チップPt:** {p['chip_pt']:+.1f} pt ({p['chip_count']}枚)"
+                    f"🎮 **ゲームPt:** {int(p['game_pt']):+d} pt\n\n"
+                    f"🪙 **チップPt:** {int(p['chip_pt']):+d} pt ({p['chip_count']:+d}枚)"
                 )
 
         st.subheader(f"📜 【{date_str}】の対局履歴")
@@ -283,22 +283,31 @@ with tab1:
         display_df = pd.DataFrame(table_data)
         st.dataframe(display_df, use_container_width=True)
 
-        col_left, col_right = st.columns([1, 1])
-        with col_left:
-            if st.button("↩️ 最後の半荘を取り消す", use_container_width=True):
-                current_history.pop()
-                save_all_to_sheet(st.session_state.history_by_date)
-                st.cache_data.clear()
-                st.rerun()
-        with col_right:
-            csv_day = display_df.to_csv(index=False).encode("utf-8-sig")
-            st.download_button(
-                label=f"💾 {date_str} の結果をCSVで保存",
-                data=csv_day,
-                file_name=f"sanma_results_{date_str}.csv",
-                mime="text/csv",
-                use_container_width=True,
-            )
+        st.markdown("#### 🗑️ 誤入力した半荘を個別削除")
+        delete_cols = st.columns(min(len(current_history), 3))
+        for idx, r in enumerate(current_history):
+            with delete_cols[idx % len(delete_cols)]:
+                if st.button(
+                    f"第{idx + 1}半荘を削除",
+                    key=f"delete_{date_str}_{idx}",
+                    use_container_width=True,
+                ):
+                    current_history.pop(idx)
+                    # 半荘番号を振り直す
+                    for j, rec in enumerate(current_history, start=1):
+                        rec["半荘"] = f"第{j}半荘"
+                    save_all_to_sheet(st.session_state.history_by_date)
+                    st.cache_data.clear()
+                    st.rerun()
+
+        csv_day = display_df.to_csv(index=False).encode("utf-8-sig")
+        st.download_button(
+            label=f"💾 {date_str} の結果をCSVで保存",
+            data=csv_day,
+            file_name=f"sanma_results_{date_str}.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
 
 # ==========================================
 # タブ 2: 通算成績ランキング
@@ -312,61 +321,64 @@ with tab2:
         st.subheader("🏆 プレイヤー別 通算成績ランキング")
 
         stats = {}
+        daily_totals = {}
         for r in all_records:
             game_results = [
-                (r["p1_name"], r["p1_pt"], r["p1_chip"]),
-                (r["p2_name"], r["p2_pt"], r["p2_chip"]),
-                (r["p3_name"], r["p3_pt"], r["p3_chip"]),
+                (r["p1_name"], int(r["p1_pt"]), int(r["p1_chip"])),
+                (r["p2_name"], int(r["p2_pt"]), int(r["p2_chip"])),
+                (r["p3_name"], int(r["p3_pt"]), int(r["p3_chip"])),
             ]
             game_results.sort(key=lambda x: x[1], reverse=True)
 
             for rank_idx, (name, g_pt, chip) in enumerate(game_results, start=1):
                 if name not in stats:
                     stats[name] = {
-                        "games": 0,
-                        "total_game_pt": 0.0,
-                        "total_chips": 0,
-                        "r1_count": 0,
-                        "r2_count": 0,
-                        "r3_count": 0,
+                        "games": 0, "total_game_pt": 0, "total_chips": 0,
+                        "r1_count": 0, "r2_count": 0, "r3_count": 0,
                     }
-                stats[name]["games"] += 1
-                stats[name]["total_game_pt"] += g_pt
-                stats[name]["total_chips"] += chip
+                s = stats[name]
+                s["games"] += 1
+                s["total_game_pt"] += g_pt
+                s["total_chips"] += chip
                 if rank_idx == 1:
-                    stats[name]["r1_count"] += 1
+                    s["r1_count"] += 1
                 elif rank_idx == 2:
-                    stats[name]["r2_count"] += 1
-                elif rank_idx == 3:
-                    stats[name]["r3_count"] += 1
+                    s["r2_count"] += 1
+                else:
+                    s["r3_count"] += 1
+
+                daily_totals.setdefault(name, {})
+                daily_totals[name][r["日付"]] = (
+                    daily_totals[name].get(r["日付"], 0) + g_pt + chip * chip_rate
+                )
 
         ranking_list = []
         for name, s in stats.items():
             chip_pt = s["total_chips"] * chip_rate
             total_pt = s["total_game_pt"] + chip_pt
             avg_rank = (
-                (s["r1_count"] * 1 + s["r2_count"] * 2 + s["r3_count"] * 3) / s["games"]
-                if s["games"] > 0
-                else 0.0
+                (s["r1_count"] + s["r2_count"] * 2 + s["r3_count"] * 3) / s["games"]
+                if s["games"] else 0
             )
-
+            avg_chip = s["total_chips"] / s["games"] if s["games"] else 0
+            day_values = list(daily_totals.get(name, {}).values())
             ranking_list.append({
                 "プレイヤー名": name,
-                "通算総合Pt": round(total_pt, 1),
-                "ゲームPt": round(s["total_game_pt"], 1),
-                "チップPt": round(chip_pt, 1),
+                "通算総合Pt": int(total_pt),
                 "対局数": s["games"],
-                "1着数": s["r1_count"],
-                "2着数": s["r2_count"],
-                "3着数": s["r3_count"],
+                "1着": s["r1_count"],
+                "2着": s["r2_count"],
+                "3着": s["r3_count"],
                 "平均順位": round(avg_rank, 2),
+                "平均チップ": round(avg_chip, 2),
+                "1日最高Pt": int(max(day_values)) if day_values else 0,
+                "1日最低Pt": int(min(day_values)) if day_values else 0,
             })
 
         ranking_df = pd.DataFrame(ranking_list)
         ranking_df.sort_values(by="通算総合Pt", ascending=False, inplace=True)
         ranking_df.reset_index(drop=True, inplace=True)
         ranking_df.index += 1
-
         st.dataframe(ranking_df, use_container_width=True)
     else:
         st.info("💡 対局データがまだありません。まずはスコアを入力していくとランキングが表示されます。")
