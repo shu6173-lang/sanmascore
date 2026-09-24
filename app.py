@@ -198,9 +198,16 @@ with tab1:
         min-width: 0 !important;
       }
       .st-key-score_input button {
-        min-height: 2.15rem !important;
-        height: 2.15rem !important;
+        min-height: 2.05rem !important;
+        height: 2.05rem !important;
+        min-width: 0 !important;
+        width: 100% !important;
         padding: 0 !important;
+        font-size: .78rem !important;
+        line-height: 1 !important;
+      }
+      .st-key-score_input [data-testid="stHorizontalBlock"] [data-testid="stHorizontalBlock"] {
+        gap: .05rem !important;
       }
       .st-key-score_input [data-testid="stNumberInput"] input {
         text-align: center !important;
@@ -222,7 +229,7 @@ with tab1:
         if state_key not in st.session_state:
             st.session_state[state_key] = 0
 
-        c_minus, c_value, c_plus = st.columns([1, 1.55, 1])
+        c_minus, c_value, c_plus = st.columns([0.42, 1.65, 0.42], gap="small")
         with c_minus:
             if st.button("−", key=minus_key, use_container_width=True):
                 st.session_state[state_key] -= step
