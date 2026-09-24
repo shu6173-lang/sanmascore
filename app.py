@@ -187,11 +187,14 @@ with tab1:
     ]
     touched_key = f"touched_players_{date_str}_{game_idx}"
     auto_target_key = f"auto_target_{date_str}_{game_idx}"
+    auto_expected_key = f"auto_expected_{date_str}_{game_idx}"
 
     if touched_key not in st.session_state:
         st.session_state[touched_key] = []
     if auto_target_key not in st.session_state:
         st.session_state[auto_target_key] = None
+    if auto_expected_key not in st.session_state:
+        st.session_state[auto_expected_key] = None
 
     # 以前の「未入力(None)」状態がsession_stateに残っていても、
     # number_inputを作る前に必ず0へ戻す。
@@ -202,42 +205,49 @@ with tab1:
 
     def auto_calc_pt(changed_key):
         touched = st.session_state[touched_key]
-        auto_target = st.session_state[auto_target_key]
+        auto_target = st.session_state.get(auto_target_key)
+        current_value = int(st.session_state.get(changed_key, 0) or 0)
 
-        # 自動計算された欄をユーザー本人が触った場合だけ、自動追従を解除する。
-        # プログラムが st.session_state[target] を書き換えただけでは
-        # この on_change は発火しないため、本人操作と自動更新を区別できる。
+        # 自動欄の変更通知が来た場合：
+        # 「こちらが自動で入れた予定値」と同じなら自動更新による再実行なので追従を維持。
+        # 値が違えば、ユーザーが±/直接入力で触ったと判断して自動追従を解除。
         if auto_target == changed_key:
+            expected = st.session_state.get(auto_expected_key)
+            if expected is not None and current_value == int(expected):
+                st.session_state[auto_expected_key] = None
+                return
+
             st.session_state[auto_target_key] = "manual"
+            st.session_state[auto_expected_key] = None
             if changed_key not in touched:
                 touched.append(changed_key)
             return
 
-        # ユーザーが操作したプレイヤーとして記録
         if changed_key not in touched:
             touched.append(changed_key)
 
-        # 自動追従中なら、元の2人のどちらかを直すたびに3人目を再計算
         auto_target = st.session_state.get(auto_target_key)
+
+        # 自動追従中：元の2人を何回・素早く押しても、その時点の最新値から再計算。
         if auto_target in pt_keys:
             others = [k for k in pt_keys if k != auto_target]
-            st.session_state[auto_target] = -sum(
-                int(st.session_state.get(k, 0) or 0) for k in others
-            )
+            new_value = -sum(int(st.session_state.get(k, 0) or 0) for k in others)
+            st.session_state[auto_expected_key] = new_value
+            st.session_state[auto_target] = new_value
             return
 
-        # "manual" になった後は、3人とも普通の手入力。再自動計算しない。
+        # 自動欄を本人が触った後は、3人とも完全手入力。
         if auto_target == "manual":
             return
 
-        # 最初に操作した2人が決まった瞬間、残り1人を自動計算し追従対象にする
+        # 最初に操作した2人が決まったら、残り1人を自動計算。
         manual_keys = [k for k in touched if k in pt_keys][:2]
         if len(manual_keys) == 2:
             target = next(k for k in pt_keys if k not in manual_keys)
-            st.session_state[target] = -sum(
-                int(st.session_state.get(k, 0) or 0) for k in manual_keys
-            )
+            new_value = -sum(int(st.session_state.get(k, 0) or 0) for k in manual_keys)
             st.session_state[auto_target_key] = target
+            st.session_state[auto_expected_key] = new_value
+            st.session_state[target] = new_value
 
     col1, col2, col3 = st.columns([2, 2, 2])
 
