@@ -193,6 +193,13 @@ with tab1:
     if auto_target_key not in st.session_state:
         st.session_state[auto_target_key] = None
 
+    # 以前の「未入力(None)」状態がsession_stateに残っていても、
+    # number_inputを作る前に必ず0へ戻す。
+    # これで最初から標準の－／＋ボタンが使える。
+    for k in pt_keys:
+        if st.session_state.get(k) is None:
+            st.session_state[k] = 0
+
     def auto_calc_pt(changed_key):
         touched = st.session_state[touched_key]
         auto_target = st.session_state[auto_target_key]
