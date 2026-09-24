@@ -7,69 +7,73 @@ import gspread
 
 st.set_page_config(page_title="三麻スコア計算", page_icon="🀄", layout="wide")
 
-# スマホでもスコア入力の3列を横並びのまま維持
+# スマホでは「灰色の入力欄そのもの」を短くして3人分を横に収める
 st.markdown("""
 <style>
 @media (max-width: 700px) {
-  html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
-    max-width: 100vw !important;
-    overflow-x: hidden !important;
-  }
   .block-container {
     max-width: 100% !important;
-    padding-left: 0.45rem !important;
-    padding-right: 0.45rem !important;
-    overflow-x: hidden !important;
+    padding-left: 0.35rem !important;
+    padding-right: 0.35rem !important;
   }
+
   .st-key-score_input {
     width: 100% !important;
     max-width: 100% !important;
-    overflow: hidden !important;
   }
+
   .st-key-score_input [data-testid="stHorizontalBlock"] {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
-    gap: 0.15rem !important;
+    justify-content: center !important;
+    gap: 0.20rem !important;
     width: 100% !important;
-    max-width: 100% !important;
   }
+
   .st-key-score_input [data-testid="column"] {
-    width: 33.333% !important;
-    flex: 1 1 0 !important;
+    flex: 0 0 31.5% !important;
+    width: 31.5% !important;
     min-width: 0 !important;
-    max-width: 33.333% !important;
-    overflow: hidden !important;
+    max-width: 31.5% !important;
   }
+
+  /* 灰色の数値入力欄をコンパクトにする */
   .st-key-score_input [data-testid="stNumberInput"] {
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
   }
+
   .st-key-score_input [data-testid="stNumberInput"] > div {
     width: 100% !important;
     min-width: 0 !important;
   }
+
   .st-key-score_input [data-testid="stNumberInput"] input {
     min-width: 0 !important;
     width: 100% !important;
-    min-width: 0 !important;
-    padding-left: 0.15rem !important;
-    padding-right: 0.15rem !important;
+    height: 2.35rem !important;
+    padding-left: 1.55rem !important;
+    padding-right: 1.55rem !important;
     text-align: center !important;
+    font-size: 0.95rem !important;
   }
+
+  /* Streamlit標準の − / ＋ ボタンは残して小さくする */
   .st-key-score_input [data-testid="stNumberInput"] button {
     width: 1.45rem !important;
     min-width: 1.45rem !important;
+    height: 2.35rem !important;
     padding: 0 !important;
   }
+
   .st-key-score_input p {
-    margin-bottom: 0.15rem !important;
+    margin-bottom: 0.10rem !important;
   }
 }
 </style>
 """, unsafe_allow_html=True)
-
 
 # ==========================================
 # 0. パスワード保護設定
