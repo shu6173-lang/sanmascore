@@ -614,6 +614,7 @@ with tab2:
                 "3着": s["r3_count"],
                 "平均順位": round(avg_rank, 2),
                 "平均Pt": round(avg_pt, 2),
+                "累計チップ": int(s["total_chips"]),
                 "平均チップ": round(avg_chip, 2),
                 "最高チップ": int(max(day_chip_values)) if day_chip_values else 0,
                 "最低チップ": int(min(day_chip_values)) if day_chip_values else 0,
