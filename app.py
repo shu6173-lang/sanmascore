@@ -4,7 +4,42 @@ import streamlit as st
 from google.oauth2.service_account import Credentials
 import gspread
 
+
 st.set_page_config(page_title="三麻スコア計算", page_icon="🀄", layout="wide")
+
+# スマホでもスコア入力の3列を横並びのまま維持
+st.markdown("""
+<style>
+@media (max-width: 700px) {
+  .st-key-score_input [data-testid="stHorizontalBlock"] {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 0.30rem !important;
+  }
+  .st-key-score_input [data-testid="column"] {
+    width: 33.333% !important;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+  }
+  .st-key-score_input [data-testid="stNumberInput"] input {
+    min-width: 0 !important;
+    padding-left: 0.35rem !important;
+    padding-right: 0.35rem !important;
+    text-align: center !important;
+  }
+  .st-key-score_input [data-testid="stNumberInput"] button {
+    width: 1.75rem !important;
+    min-width: 1.75rem !important;
+    padding: 0 !important;
+  }
+  .st-key-score_input p {
+    margin-bottom: 0.15rem !important;
+  }
+}
+</style>
+""", unsafe_allow_html=True)
+
 
 # ==========================================
 # 0. パスワード保護設定
@@ -179,49 +214,50 @@ with tab1:
     st.subheader(f"📝 {date_str}{has_records_icon} ｜ 第 {game_idx + 1} 半荘の入力")
 
     # 3人分を「ゲームPtの横一列 → チップの横一列」の順に入力
-    name_cols = st.columns(3)
-    for col, name in zip(name_cols, [p1_name, p2_name, p3_name]):
-        with col:
-            st.markdown(
-                f"<div style='text-align:center;font-weight:700'>{name}</div>",
-                unsafe_allow_html=True,
+    with st.container(key="score_input"):
+        name_cols = st.columns(3)
+        for col, name in zip(name_cols, [p1_name, p2_name, p3_name]):
+            with col:
+                st.markdown(
+                    f"<div style='text-align:center;font-weight:700'>{name}</div>",
+                    unsafe_allow_html=True,
+                )
+
+        st.markdown("**🎮 ゲームPt**")
+        pt_col1, pt_col2, pt_col3 = st.columns(3)
+        with pt_col1:
+            p1_pt = st.number_input(
+                f"{p1_name} ゲームPt", step=1, value=0, format="%d",
+                key=f"p1_p_{date_str}_{game_idx}", label_visibility="collapsed"
+            )
+        with pt_col2:
+            p2_pt = st.number_input(
+                f"{p2_name} ゲームPt", step=1, value=0, format="%d",
+                key=f"p2_p_{date_str}_{game_idx}", label_visibility="collapsed"
+            )
+        with pt_col3:
+            p3_pt = st.number_input(
+                f"{p3_name} ゲームPt", step=1, value=0, format="%d",
+                key=f"p3_p_{date_str}_{game_idx}", label_visibility="collapsed"
             )
 
-    st.markdown("**🎮 ゲームPt**")
-    pt_col1, pt_col2, pt_col3 = st.columns(3)
-    with pt_col1:
-        p1_pt = st.number_input(
-            f"{p1_name} ゲームPt", step=1, value=0, format="%d",
-            key=f"p1_p_{date_str}_{game_idx}", label_visibility="collapsed"
-        )
-    with pt_col2:
-        p2_pt = st.number_input(
-            f"{p2_name} ゲームPt", step=1, value=0, format="%d",
-            key=f"p2_p_{date_str}_{game_idx}", label_visibility="collapsed"
-        )
-    with pt_col3:
-        p3_pt = st.number_input(
-            f"{p3_name} ゲームPt", step=1, value=0, format="%d",
-            key=f"p3_p_{date_str}_{game_idx}", label_visibility="collapsed"
-        )
-
-    st.markdown("**🪙 チップ枚数**")
-    chip_col1, chip_col2, chip_col3 = st.columns(3)
-    with chip_col1:
-        p1_chip = st.number_input(
-            f"{p1_name} チップ枚数", step=1, value=0,
-            key=f"p1_c_{date_str}_{game_idx}", label_visibility="collapsed"
-        )
-    with chip_col2:
-        p2_chip = st.number_input(
-            f"{p2_name} チップ枚数", step=1, value=0,
-            key=f"p2_c_{date_str}_{game_idx}", label_visibility="collapsed"
-        )
-    with chip_col3:
-        p3_chip = st.number_input(
-            f"{p3_name} チップ枚数", step=1, value=0,
-            key=f"p3_c_{date_str}_{game_idx}", label_visibility="collapsed"
-        )
+        st.markdown("**🪙 チップ枚数**")
+        chip_col1, chip_col2, chip_col3 = st.columns(3)
+        with chip_col1:
+            p1_chip = st.number_input(
+                f"{p1_name} チップ枚数", step=1, value=0,
+                key=f"p1_c_{date_str}_{game_idx}", label_visibility="collapsed"
+            )
+        with chip_col2:
+            p2_chip = st.number_input(
+                f"{p2_name} チップ枚数", step=1, value=0,
+                key=f"p2_c_{date_str}_{game_idx}", label_visibility="collapsed"
+            )
+        with chip_col3:
+            p3_chip = st.number_input(
+                f"{p3_name} チップ枚数", step=1, value=0,
+                key=f"p3_c_{date_str}_{game_idx}", label_visibility="collapsed"
+            )
 
     total_pt = p1_pt + p2_pt + p3_pt
     total_chip = p1_chip + p2_chip + p3_chip
